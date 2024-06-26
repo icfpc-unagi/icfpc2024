@@ -1,4 +1,4 @@
-FROM golang:1.19.0 AS golang
+FROM golang:1.22.0 AS golang
 
 FROM golang AS builder
 
@@ -12,7 +12,7 @@ COPY ./go/pkg /work/pkg
 COPY ./go/internal /work/internal
 RUN go build -o /work/server ./cmd/server
 
-FROM rust:1.63 AS rust-builder
+FROM rust:1.79 AS rust-builder
 RUN rustup target add x86_64-unknown-linux-musl
 RUN rustup target add wasm32-unknown-unknown
 # RUN cargo install wasm-pack  # It was very slow.

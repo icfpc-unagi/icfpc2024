@@ -1,4 +1,4 @@
-FROM golang:1.19.0 AS go-builder
+FROM golang:1.22.0 AS go-builder
 
 RUN mkdir -p /work
 WORKDIR /work
@@ -11,7 +11,7 @@ COPY ./go/internal /work/internal
 RUN go build -o /usr/local/bin/server ./cmd/server \
     && go build -o /usr/local/bin/runner ./cmd/runner
 
-FROM rust:1.63 AS rust-builder
+FROM rust:1.79 AS rust-builder
 RUN rustup target add x86_64-unknown-linux-musl
 RUN mkdir -p /work/src
 WORKDIR /work
@@ -24,7 +24,7 @@ RUN find /work/src -print -exec touch "{}" \; \
 COPY scripts/copy_binaries.sh /work/scripts/copy_binaries.sh
 RUN bash /work/scripts/copy_binaries.sh
 
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 RUN apt-get update -qy && apt-get install -qy apt-transport-https ca-certificates gnupg curl
 RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" \
     | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list \
