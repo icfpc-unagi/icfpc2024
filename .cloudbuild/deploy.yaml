@@ -37,7 +37,7 @@ steps:
     entrypoint: '/usr/bin/bash'
     args: [
       '-c',
-      'make secrets'
+      'make secrets/service_account.json@host'
     ]
     waitFor: ['-']
   - id: 'build-binaries'
