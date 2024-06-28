@@ -29,23 +29,36 @@ pub struct CommQuery {
     raw: bool,
 }
 
-pub async fn comm(query: web::Query<CommQuery>) -> impl Responder {
-    let client = Client::new();
-    let res = client
+pub async fn communicate(message: String) -> Result<String, anyhow::Error> {
+    let res = Client::new()
         .post("https://boundvariable.space/communicate")
         .header(
             "Authorization",
             "Bearer 1b2a9024-2287-4eac-a58f-66a33726e529",
         )
-        .body(if query.raw {
-            query.q.to_owned()
-        } else {
-            "S".to_owned() + &encode_str(&query.q)
-        })
+        .body(message)
         .send()
-        .await
-        .unwrap();
-    let body = res.text().await.unwrap();
+        .await?;
+    let body = res.text().await?;
+    Ok(body)
+}
+pub async fn comm(query: web::Query<CommQuery>) -> impl Responder {
+    let response = match communicate(if query.raw {
+        query.q.to_owned()
+    } else {
+        "S".to_owned() + &encode_str(&query.q)
+    })
+    .await
+    {
+        Ok(body) => body,
+        Err(error) => return HttpResponse::InternalServerError().body(error.to_string()),
+    };
+    let value = eval::eval(&response);
+    let value_str = if let eval::Value::Str(s) = value {
+        String::from_utf8(s).unwrap_or_default()
+    } else {
+        format!("{}", value)
+    };
     HttpResponse::Ok()
         .content_type("text/html")
         .body(www::handlers::template::render(&format!(
@@ -53,7 +66,7 @@ pub async fn comm(query: web::Query<CommQuery>) -> impl Responder {
             <form>
                 <textarea name="q" placeholder="message" autofocus required cols="160">{}</textarea>
                 <div>
-                    <input type="checkbox" name="raw" id="raw"{}><label for="raw">raw</label>
+                    <input type="checkbox" name="raw" id="raw" value="true"{}><label for="raw">raw</label>
                     <button type="submit">Send</button>
                 </div>
             </form>
@@ -75,7 +88,7 @@ pub async fn comm(query: web::Query<CommQuery>) -> impl Responder {
             "#,
             query.q,
             if query.raw { " checked" } else { "" },
-            body,
-            decode(&body),
+            response,
+            value_str,
         )))
 }
