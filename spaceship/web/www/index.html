@@ -19,7 +19,7 @@
   <p>
     <label>
       Seed:
-      <input type="number" id="seed" value="0" min="23" max="18446744073709551615" onchange="generate()" />
+      <input type="number" id="seed" value="0" min="0" max="24" onchange="generate()" />
     </label>&emsp;
     <label>
       #cases:
@@ -49,7 +49,7 @@
     <input type="button" id="play" value="▶" style="width:32px;height:32px;bottom:5px;position:relative;">&ensp;
     <label>
       slow
-      <input type="range" id="speed" min="1" max="60" value="30" style="width:200px;">
+      <input type="range" id="speed" min="1" max="1000" value="30" style="width:200px;">
       fast&emsp;
     </label>
     <label>
