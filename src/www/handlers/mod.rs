@@ -39,11 +39,18 @@ pub async fn comm(query: web::Query<CommQuery>) -> impl Responder {
         Ok(body) => body,
         Err(error) => return HttpResponse::InternalServerError().body(error.to_string()),
     };
-    let value = eval::eval(&response);
-    let value_str = if let eval::Value::Str(s) = value {
-        String::from_utf8(s).unwrap_or_default()
-    } else {
-        format!("{}", value)
+    // let value = eval::eval(&response);
+    // let value_str = if let eval::Value::Str(s) = value {
+    //     String::from_utf8(s).unwrap_or_default()
+    // } else {
+    //     format!("{}", value)
+    // };
+    // echo eval
+    let value_str = match communicate_async("B. S%#(/} ".to_owned() + &response).await {
+        Ok(value) => decode_str(&value.trim_start_matches('S'))
+            .trim_end_matches("\n\nYou scored some points for using the echo service!\n")
+            .to_owned(),
+        Err(error) => return HttpResponse::InternalServerError().body(error.to_string()),
     };
     HttpResponse::Ok()
         .content_type("text/html")
