@@ -1,5 +1,4 @@
 use crate::*;
-use reqwest::Client;
 // pub mod api_proxy;
 // pub mod cron;
 // pub mod my_submissions;
@@ -29,21 +28,8 @@ pub struct CommQuery {
     raw: bool,
 }
 
-pub async fn communicate(message: String) -> Result<String, anyhow::Error> {
-    let res = Client::new()
-        .post("https://boundvariable.space/communicate")
-        .header(
-            "Authorization",
-            "Bearer 1b2a9024-2287-4eac-a58f-66a33726e529",
-        )
-        .body(message)
-        .send()
-        .await?;
-    let body = res.text().await?;
-    Ok(body)
-}
 pub async fn comm(query: web::Query<CommQuery>) -> impl Responder {
-    let response = match communicate(if query.raw {
+    let response = match communicate_async(if query.raw {
         query.q.to_owned()
     } else {
         "S".to_owned() + &encode_str(&query.q)
@@ -70,8 +56,6 @@ pub async fn comm(query: web::Query<CommQuery>) -> impl Responder {
                     <button type="submit">Send</button>
                 </div>
             </form>
-            <h4>Raw response:</h4>
-            <textarea placeholder="raw response" readonly cols="160" rows="10">{}</textarea>
             <h4>Decoded response:</h4>
             <textarea placeholder="response" readonly cols="160" rows="20" id="response">{}</textarea>
             <h4>Rendered response:</h4>
@@ -85,6 +69,8 @@ pub async fn comm(query: web::Query<CommQuery>) -> impl Responder {
                     }} catch (e) {{}}
                 </script>
             </section>
+            <h4>Raw response:</h4>
+            <textarea placeholder="raw response" readonly cols="160" rows="10">{}</textarea>
             "#,
             query.q,
             if query.raw { " checked" } else { "" },
