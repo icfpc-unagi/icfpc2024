@@ -39,7 +39,6 @@ macro_rules! mat {
     ($e:expr; $d:expr $(; $ds:expr)+) => { vec![mat![$e $(; $ds)*]; $d] };
 }
 
-
 fn encode_char(c: char) -> char {
     // TODO: make it a constant
     let chars: Vec<_> = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!\"#$%&'()*+,-./:;<=>?@[\\]^_`|~ \n".chars().collect();
@@ -61,12 +60,31 @@ fn decode_str(s: &str) -> String {
     s.chars().map(decode_char).collect::<String>()
 }
 
+// TODO: Implement with bigint
+fn decode_base94(s: &str) -> u128 {
+    let mut n = 0;
+    for c in s.chars() {
+        n = n * 94 + (c as u8 - '!' as u8) as u128;
+    }
+    n
+}
+
+// TODO: Implement with bigint
+fn encode_base94(mut n: u128) -> String {
+    let mut chars = vec![];
+    while n > 0 {
+        chars.push((n % 94 + '!' as u128) as u8 as char);
+        n /= 94;
+    }
+    chars.iter().rev().collect()
+}
+
 fn decode(s: &str) -> Box<dyn Any> {
     let (indicator, rest) = s.split_at(1);
     match indicator {
         "T" => Box::new(true),
         "F" => Box::new(false),
-        "I" => Box::new(unimplemented!("Integer")),
+        "I" => Box::new(decode_base94(rest)),
         "S" => Box::new(decode_str(rest)),
         _ => unimplemented!("Unknown indicator"),
     }
