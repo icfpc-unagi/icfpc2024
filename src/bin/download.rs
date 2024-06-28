@@ -79,7 +79,7 @@ fn request(input: &str) -> anyhow::Result<String> {
 }
 
 fn main() -> anyhow::Result<()> {
-    for i in 1..25 {
+    for i in 25..26 {
         let input = format!("get spaceship{}", i);
         let output = request(&input)?;
         std::fs::write(format!("./input/spaceship/spaceship{}.txt", i), output)?;

@@ -1,3 +1,4 @@
+import multiprocessing.pool
 import subprocess
 
 
@@ -50,8 +51,15 @@ RUNS = 10""")
 
     with open(f"tour/tour{problem_id}.txt", "w") as f:
         f.write("\n".join(map(str, tour)) + "\n")
+    
+    print(f"Problem {problem_id} done!!!!!")
 
-for i in range(12, 26):
-    print("-" * 100)
-    print(f"Problem {i}")
-    convert(i)
+
+import multiprocessing
+with multiprocessing.pool.ThreadPool() as pool:
+    pool.map(convert, range(12, 25))
+
+#for i in range(12, 26):
+#    print("-" * 100)
+#    print(f"Problem {i}")
+#    convert(i)
