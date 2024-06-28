@@ -74,7 +74,7 @@ pub async fn comm(query: web::Query<CommQuery>) -> impl Responder {
             "#,
             query.q,
             if query.raw { " checked" } else { "" },
-            response,
             value_str,
+            response,
         )))
 }
