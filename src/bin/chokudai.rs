@@ -3,13 +3,13 @@
 extern crate num_bigint;
 extern crate num_traits;
 
+use core::num;
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
-use core::num;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
-use std::thread;
+use std::thread::{self, sleep};
 use std::time::Duration;
 
 use icfpc2024::communicate;
@@ -154,7 +154,7 @@ fn main() {
 }
 
 fn main2() {
-    for i in 1..2 {
+    for i in 1..22 {
         solve(i);
     }
 }
@@ -168,6 +168,7 @@ fn solve(i: usize) {
             //for row in &board {
             //eprintln!("{}", row.iter().collect::<String>());
             //}
+            eprintln!("task: {}", i);
 
             if let Some(path) = find_path(&board) {
                 let moves: String = path.into_iter().collect();
@@ -176,8 +177,9 @@ fn solve(i: usize) {
                 eprintln!("{}", moves.len());
                 //let sendstring = format!("solve lambdaman{} {}", i, moves);
                 let sendstring = make_move(i, &moves);
-                println!("{}", sendstring);
-                //_ = request(&sendstring);
+                //println!("{}", sendstring);
+                _ = request(&sendstring);
+                sleep(Duration::from_secs(4));
 
                 //println!("通れなかったマスの数: {}", unvisited_count);
             } else {
@@ -202,8 +204,8 @@ fn make_move(id: usize, moves: &str) -> String {
         }
     }
 
-    eprintln!("{}", moves);
-    eprintln!("move {}", num);
+    //eprintln!("{}", moves);
+    //eprintln!("move {}", num);
 
     let zero = "I!";
     let one = "I\"";
@@ -288,7 +290,8 @@ fn request(input: &str) -> anyhow::Result<String> {
     eprintln!("--------------------------------------------------------------------------------");
     eprintln!("Raw request:\n{}\n", &input);
 
-    let text = "S".to_owned() + &input.chars().map(encode).collect::<String>();
+    let text = input;
+    //let text = "S".to_owned() + &input.chars().map(encode).collect::<String>();
 
     eprintln!("--------------------------------------------------------------------------------");
     eprintln!("Encoded request:\n{}\n", &text);
@@ -311,11 +314,10 @@ fn request(input: &str) -> anyhow::Result<String> {
     }
 }
 
-
 #[test]
 fn test_encode_i() {
     let num = BigInt::from(1258827021845_i64);
     let encoded = encode_i(num.clone());
     let decoded = icfpc2024::eval::eval(&encoded);
-    assert_eq!(format!("{}", decoded), format!("int({})", num)); 
+    assert_eq!(format!("{}", decoded), format!("int({})", num));
 }
