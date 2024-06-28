@@ -1,0 +1,13 @@
+# Input
+  `-100 <= A <= 100` and `-100 <= B <= 100`
+
+# Output
+  The maximum of `A` and `B`.
+
+# Example
+  * `A = 3`
+    `B = 7`
+    `Answer = 7`
+  * `A = -2`
+    `B = -6`
+    `Answer = -2`

@@ -63,10 +63,10 @@ fn request(input: &str) -> anyhow::Result<String> {
 }
 
 fn main() -> anyhow::Result<()> {
-    for i in 25..26 {
-        let input = format!("get spaceship{}", i);
+    for i in 1..13 {
+        let input = format!("get 3d{}", i);
         let output = request(&input)?;
-        std::fs::write(format!("./input/spaceship/spaceship{}.txt", i), output)?;
+        std::fs::write(format!("./input/3d/3d{}.txt", i), output)?;
         thread::sleep(Duration::from_secs(3));
     }
 

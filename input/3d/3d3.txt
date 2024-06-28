@@ -1,0 +1,11 @@
+# Input
+  `-100 <= A <= 100`
+
+# Output
+  The sign of `A`, which is `-1` for negative numbers, `0` for `0`, and `1` for positive numbers.
+
+# Example
+  * `A = 3`
+    `Answer = 1`
+  * `A = -6`
+    `Answer = -1`
