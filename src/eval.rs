@@ -5,6 +5,7 @@ use num_bigint::BigInt;
 use serde::de;
 use std::rc::Rc;
 
+#[derive(Debug)]
 pub enum Node {
     Const(Value),
     Var(BigInt, Option<usize>),  // name, de bruijn index
@@ -83,11 +84,11 @@ fn parse(tokens: &[Vec<u8>], p: &mut usize, binders: &mut Vec<BigInt>) -> Node {
         }
         b'L' => {
             let mut var = BigInt::from(0);
-            binders.push(var.clone());
             for &b in body {
                 var *= 94;
                 var += b - 33;
             }
+            binders.push(var.clone());
             let res = Node::Lambda {
                 var,
                 exp: Rc::new(parse(tokens, p, binders)),
@@ -148,40 +149,63 @@ fn S(body: &[u8]) -> Value {
     Value::Str(body.iter().map(|&b| CHARS[b as usize - 33]).collect())
 }
 
-fn subst(root: &Node, var: &BigInt, val: &Rc<Node>) -> Rc<Node> {
+fn subst(root: &Node, var: &BigInt, val: Rc<Node>, level: usize) -> Rc<Node> {
     match root {
         Node::Const(val) => Rc::new(Node::Const(val.clone())),
         Node::Unary { op, v } => Rc::new(Node::Unary {
             op: *op,
-            v: subst(v, var, val),
+            v: subst(v, var, val, level),
         }),
         Node::Binary { op, v1, v2 } => Rc::new(Node::Binary {
             op: *op,
-            v1: subst(v1, var, val),
-            v2: subst(v2, var, val),
+            v1: subst(v1, var, val.clone(), level),
+            v2: subst(v2, var, val, level),
         }),
         Node::If { cond, v1, v2 } => Rc::new(Node::If {
-            cond: subst(cond, var, val),
-            v1: subst(v1, var, val),
-            v2: subst(v2, var, val),
+            cond: subst(cond, var, val.clone(), level),
+            v1: subst(v1, var, val.clone(), level),
+            v2: subst(v2, var, val, level),
         }),
-        Node::Lambda { var: var2, exp } => {
-            if var == var2 {
-                exp.clone()
-            } else {
-                Rc::new(Node::Lambda {
-                    var: var2.clone(),
-                    exp: subst(exp, var, val),
-                })
-            }
-        }
+        Node::Lambda { var: var2, exp } => Rc::new(Node::Lambda {
+            var: var2.clone(),
+            // TODO: cache shifted val
+            exp: subst(exp, var, shift(val, level), level + 1),
+        }),
         Node::Var(var2, index) => {
-            if var == var2 {
+            if index == &Some(level) {
                 val.clone()
             } else {
                 Rc::new(Node::Var(var2.clone(), *index))
             }
         }
+    }
+}
+
+fn shift(root: Rc<Node>, level: usize) -> Rc<Node> {
+    match root.as_ref() {
+        Node::Const(val) => Rc::new(Node::Const(val.clone())),
+        Node::Unary { op, v } => Rc::new(Node::Unary {
+            op: *op,
+            v: shift(v.clone(), level),
+        }),
+        Node::Binary { op, v1, v2 } => Rc::new(Node::Binary {
+            op: *op,
+            v1: shift(v1.clone(), level),
+            v2: shift(v2.clone(), level),
+        }),
+        Node::If { cond, v1, v2 } => Rc::new(Node::If {
+            cond: shift(cond.clone(), level),
+            v1: shift(v1.clone(), level),
+            v2: shift(v2.clone(), level),
+        }),
+        Node::Lambda { var, exp } => Rc::new(Node::Lambda {
+            var: var.clone(),
+            exp: shift(exp.clone(), level + 1),
+        }),
+        Node::Var(var, index) => {
+            let index = index.map(|i| if i >= level { i + 1 } else { i });
+            Rc::new(Node::Var(var.clone(), index))
+        },
     }
 }
 
@@ -380,7 +404,9 @@ fn rec(root: &Node, count: &mut usize) -> Node {
                     if *count > 10_000_000 {
                         panic!("beta reductions limit exceeded");
                     }
-                    let v = subst(&exp, &var, &v2);
+                    dbg!(&exp, &var, &v2);
+                    let v = subst(&exp, &var, v2.clone(), 0);
+                    dbg!(&v);
                     rec(&v, count)
                 } else {
                     panic!("apply of non-lambda");
@@ -398,9 +424,11 @@ fn rec(root: &Node, count: &mut usize) -> Node {
                 _ => panic!("condition is not bool"),
             }
         }
-        Node::Lambda { .. } => {
-            panic!("lambda cannot be evaluated directly");
-        }
+        Node::Lambda { var, exp } => Node::Lambda {
+            var: var.clone(),
+            // do not evaluate exp here
+            exp: exp.clone(),
+        },
         Node::Var(var, index) => Node::Var(var.clone(), *index),
     }
 }
@@ -416,6 +444,7 @@ pub fn eval(s: &str) -> Value {
     assert_eq!(p, tokens.len());
     assert_eq!(binders.len(), 0);
     let ret = rec(&root, &mut 0);
+    // dbg!(&ret);
     if let Node::Const(val) = ret {
         val
     } else {
@@ -445,4 +474,6 @@ fn test() {
     assert_eq!(eval("BT I$ S4%34"), Value::Str(b"tes".to_vec()));
     assert_eq!(eval("BD I$ S4%34"), Value::Str(b"t".to_vec()));
     assert_eq!(eval("? B> I# I$ S9%3 S./"), Value::Str(b"no".to_vec()));
+    assert_eq!(eval("B$ B$ L# L$ v# B. SB%,,/ S}Q/2,$_ IK"), Value::Str(b"Hello World!".to_vec()));
+    assert_eq!(eval(r#"B$ L# B$ L" B+ v" v" B* I$ I# v8"#), eval("I-"));
 }
