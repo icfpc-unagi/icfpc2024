@@ -17,7 +17,7 @@ getrandom = { version = "0.2", features = ["js"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["float_roundtrip"] }
 indicatif = "0.17.0"
-reqwest = { version = "0.11", features = ["json"], optional = true }
+reqwest = { version = "0.11", features = ["json", "blocking"], optional = true }
 tokio = { version = "1", features = ["full"], optional = true }
 svg = "0.13.1"
 anyhow = "1.0.71"
@@ -29,6 +29,7 @@ resvg = { version = "0.35.0", optional = true }
 chrono-humanize = "0.2.2"
 chrono = "0.4.26"
 rust-crypto = "0.2"
+clap = { version = "4.5.7", features = ["derive"] }
 
 [profile.release]
 debug = true

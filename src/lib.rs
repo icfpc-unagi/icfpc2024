@@ -1,3 +1,5 @@
+use std::any::Any;
+
 #[cfg(feature = "tokio")]
 #[cfg(feature = "reqwest")]
 pub mod www;
@@ -35,4 +37,37 @@ macro_rules! mat {
     ($($e:expr,)*) => { vec![$($e),*] };
     ($e:expr; $d:expr) => { vec![$e; $d] };
     ($e:expr; $d:expr $(; $ds:expr)+) => { vec![mat![$e $(; $ds)*]; $d] };
+}
+
+
+fn encode_char(c: char) -> char {
+    // TODO: make it a constant
+    let chars: Vec<_> = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!\"#$%&'()*+,-./:;<=>?@[\\]^_`|~ \n".chars().collect();
+    let index = chars.iter().position(|&x| x == c).unwrap();
+    return (index + 33) as u8 as char;
+}
+
+fn decode_char(c: char) -> char {
+    // TODO: make it a constnat
+    let chars: Vec<_> = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!\"#$%&'()*+,-./:;<=>?@[\\]^_`|~ \n".chars().collect();
+    return chars[c as usize - 33];
+}
+
+fn encode_str(s: &str) -> String {
+    s.chars().map(encode_char).collect::<String>()
+}
+
+fn decode_str(s: &str) -> String {
+    s.chars().map(decode_char).collect::<String>()
+}
+
+fn decode(s: &str) -> Box<dyn Any> {
+    let (indicator, rest) = s.split_at(1);
+    match indicator {
+        "T" => Box::new(true),
+        "F" => Box::new(false),
+        "I" => Box::new(unimplemented!("Integer")),
+        "S" => Box::new(decode_str(rest)),
+        _ => unimplemented!("Unknown indicator"),
+    }
 }
