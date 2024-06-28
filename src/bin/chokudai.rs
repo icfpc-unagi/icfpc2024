@@ -237,9 +237,9 @@ fn encode_i(inp: BigInt) -> String {
     let mut s = String::new(); // 空の文字列を初期化
 
     while i > zero {
-        let r = (i.clone() % 95u32).to_u32().unwrap();
+        let r = (i.clone() % 94u32).to_u32().unwrap();
         s = format!("{}{}", decode_from_i(r), s);
-        i /= 95u32;
+        i /= 94u32;
     }
     format!("I{}", s)
 }
@@ -312,10 +312,10 @@ fn request(input: &str) -> anyhow::Result<String> {
 }
 
 
-// #[test]
-// fn test_encode_i() {
-//     let num = BigInt::from(1258827021845_i64);
-//     let encoded = encode_i(num.clone());
-//     let decoded = icfpc2024::eval::eval(&encoded);
-//     assert_eq!(format!("{}", decoded), format!("{}", num)); 
-// }
+#[test]
+fn test_encode_i() {
+    let num = BigInt::from(1258827021845_i64);
+    let encoded = encode_i(num.clone());
+    let decoded = icfpc2024::eval::eval(&encoded);
+    assert_eq!(format!("{}", decoded), format!("int({})", num)); 
+}
