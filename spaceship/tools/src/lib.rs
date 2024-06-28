@@ -228,7 +228,7 @@ pub fn vis_default(input: &Input, out: &Output) -> (i64, String, String) {
 pub fn vis(input: &Input, out: &[usize]) -> (i64, String, String) {
     let W = 600;
     let H = 600;
-    let (score, err, (p, visited, route)) = compute_score_details(input, &out);
+    let (score, err, (p, visited, mut route)) = compute_score_details(input, &out);
     let mut min = i32::MAX;
     let mut max = i32::MIN;
     for &(x, y) in &input.ps {
@@ -255,6 +255,9 @@ pub fn vis(input: &Input, out: &[usize]) -> (i64, String, String) {
     doc = doc.add(Style::new(format!(
         "text {{text-anchor: middle;dominant-baseline: central;}}"
     )));
+    if route.len() >= 20000 {
+        route = route.iter().skip(route.len() / 10000).copied().collect();
+    }
     for i in 1..route.len() {
         doc = doc.add(
             Line::new()
