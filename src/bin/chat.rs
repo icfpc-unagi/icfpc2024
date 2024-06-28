@@ -1,5 +1,4 @@
 use icfpc2024::*;
-use reqwest::blocking::Client;
 use std::io::Read;
 
 fn main() -> anyhow::Result<()> {
@@ -17,16 +16,7 @@ fn main() -> anyhow::Result<()> {
     println!("--------------------------------------------------------------------------------");
     println!("Encoded request:\n{}\n", &text);
 
-    let url = "https://boundvariable.space/communicate";
-    let client = Client::new();
-
-    let res = client
-        .post(url)
-        .body(text.to_string())
-        .header("Authorization", icfpc2024::get_bearer()?)
-        .send()?;
-
-    let body = res.text()?;
+    let body = communicate(text.to_string())?;
     println!("--------------------------------------------------------------------------------");
     println!("Raw response:\n{}\n", body);
 

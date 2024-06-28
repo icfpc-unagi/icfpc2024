@@ -1,8 +1,6 @@
 use std::io::Read;
 
-use reqwest::blocking::Client;
-
-use icfpc2024::decode;
+use icfpc2024::*;
 
 fn main() -> anyhow::Result<()> {
     let mut input = r"B. S%#(/} ".to_string();
@@ -11,16 +9,7 @@ fn main() -> anyhow::Result<()> {
         input.pop();
     }
 
-    let url = "https://boundvariable.space/communicate";
-    let client = Client::new();
-
-    let res = client
-        .post(url)
-        .body(input)
-        .header("Authorization", icfpc2024::get_bearer()?)
-        .send()?;
-
-    let body = res.text()?;
+    let body = communicate(input)?;
     println!("--------------------------------------------------------------------------------");
     println!("Raw response:\n{}\n", body);
 
