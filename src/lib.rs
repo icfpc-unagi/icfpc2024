@@ -1,4 +1,6 @@
-use std::fmt::Display;
+use anyhow::Context;
+use reqwest::blocking::Client;
+use std::{any, fmt::Display};
 
 #[cfg(feature = "tokio")]
 #[cfg(feature = "reqwest")]
@@ -67,6 +69,22 @@ pub fn decode_base94(s: &str) -> u128 {
         n = n * 94 + (c as u8 - '!' as u8) as u128;
     }
     n
+}
+
+pub fn get_bearer() -> anyhow::Result<String> {
+    let unagi_password = std::env::var("UNAGI_PASSWORD").context("UNAGI_PASSWORD not set")?;
+    let client = Client::new();
+    let res = client
+        .get(&format!(
+            "https://storage.googleapis.com/icfpc2024-data/{}/bearer.txt",
+            unagi_password,
+        ))
+        .send()
+        .context("Failed to get bearer")?;
+    res.text()
+        .context("Failed to get bearer")
+        .map_err(Into::into)
+        .map(|s| format!("Bearer {}", s))
 }
 
 #[test]
