@@ -122,7 +122,7 @@ pub fn decode(s: &str) -> Box<dyn Display> {
 pub async fn communicate_async(message: String) -> Result<String, anyhow::Error> {
     Ok(reqwest::Client::new()
         .post("https://boundvariable.space/communicate")
-        .header("Authorization", get_bearer()?)
+        .header("Authorization", get_bearer_async().await?)
         .body(message)
         .send()
         .await?
