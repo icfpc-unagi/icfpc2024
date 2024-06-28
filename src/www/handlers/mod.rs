@@ -1,3 +1,5 @@
+use std::str::pattern::Pattern;
+
 use crate::*;
 // pub mod api_proxy;
 // pub mod cron;
@@ -18,6 +20,7 @@ pub async fn index() -> impl Responder {
             "Hello, world!<br><a href='/comm'>communicate</a>",
         ))
 }
+use mysql::prelude::ToValue;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -47,9 +50,13 @@ pub async fn comm(query: web::Query<CommQuery>) -> impl Responder {
     // };
     // echo eval
     let value_str = match communicate_async("B. S%#(/} ".to_owned() + &response).await {
-        Ok(value) => decode_str(&value.trim_start_matches('S'))
-            .trim_end_matches("\n\nYou scored some points for using the echo service!\n")
-            .to_owned(),
+        Ok(value) => {
+            let decoded = decode_str(&value.trim_start_matches('S'));
+            decoded
+                .strip_suffix("\n\nYou scored some points for using the echo service!\n")
+                .unwrap_or(&decoded)
+                .to_owned()
+        }
         Err(error) => return HttpResponse::InternalServerError().body(error.to_string()),
     };
     HttpResponse::Ok()
