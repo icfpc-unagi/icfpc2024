@@ -6,6 +6,17 @@ steps:
       '-c',
       'make push/server'
     ]
+  - id: 'deploy-server'
+    name: 'gcr.io/cloud-builders/gcloud'
+    args: [
+      'run',
+      'services',
+      'update',
+      'server',
+      '--project=icfpc-primary',
+      '--region=asia-northeast1',
+      '--image=asia-docker.pkg.dev/icfpc-primary/asia/server:latest'
+    ]
 
 options:
   env:
