@@ -7,8 +7,6 @@ pub mod www;
 #[cfg(feature = "mysql")]
 pub mod sql;
 
-pub mod encryption;
-
 pub trait SetMinMax {
     fn setmin(&mut self, v: Self) -> bool;
     fn setmax(&mut self, v: Self) -> bool;
