@@ -256,7 +256,7 @@ pub fn vis(input: &Input, out: &[usize]) -> (i64, String, String) {
         "text {{text-anchor: middle;dominant-baseline: central;}}"
     )));
     if route.len() >= 20000 {
-        route = route.iter().skip(route.len() / 10000).copied().collect();
+        route = route.iter().step_by(route.len() / 10000).copied().collect();
     }
     for i in 1..route.len() {
         doc = doc.add(
