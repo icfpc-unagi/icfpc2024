@@ -1,3 +1,5 @@
+use std::any::Any;
+
 #[cfg(feature = "tokio")]
 #[cfg(feature = "reqwest")]
 pub mod www;
@@ -60,6 +62,9 @@ fn decode_str(s: &str) -> String {
 fn decode(s: &str) -> Box<dyn Any> {
     let (indicator, rest) = s.split_at(1);
     match indicator {
+        "T" => Box::new(true),
+        "F" => Box::new(false),
+        "I" => Box::new(unimplemented!("Integer")),
         "S" => Box::new(decode_str(rest)),
         _ => unimplemented!("Unknown indicator"),
     }
