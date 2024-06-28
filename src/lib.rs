@@ -98,6 +98,6 @@ pub fn decode(s: &str) -> Box<dyn Display> {
         "F" => Box::new(false),
         "I" => Box::new(decode_base94(rest)),
         "S" => Box::new(decode_str(rest)),
-        _ => unimplemented!("Unknown indicator"),
+        _ => todo!("Unknown indicator {}", indicator),
     }
 }

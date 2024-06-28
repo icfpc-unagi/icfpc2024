@@ -2,10 +2,10 @@
 # Otherwise, it is set to "host".  If Docker is not installed, it presumes it
 # is running inside a container (containerd does not prepare a /.dockerenv).
 DOCKER_ENVIRONMENT = $(shell \
-	if [ -f /.dockerenv ] || ! which docker >/dev/null 2>/dev/null; then \
-		echo docker; \
-	else \
+	if ! [ -f /.dockerenv ] || which docker >/dev/null 2>/dev/null; then \
 		echo host; \
+	else \
+		echo docker; \
 	fi)
 # DOCKER_RUN is a command to trigger "docker run".  It may have extra
 # command-line arguments.
