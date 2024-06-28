@@ -1,3 +1,10 @@
+#![allow(unused)]
+
+extern crate num_bigint;
+extern crate num_traits;
+
+use num_bigint::BigInt;
+use num_traits::ToPrimitive;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
@@ -146,7 +153,7 @@ fn main() {
 }
 
 fn main2() {
-    for i in 1..21 {
+    for i in 1..2 {
         solve(i);
     }
 }
@@ -166,8 +173,10 @@ fn solve(i: usize) {
                 //let unvisited_count = count_unvisited_cells(&board, &moves);
                 //println!("{}", moves);
                 eprintln!("{}", moves.len());
-                let sendstring = format!("solve lambdaman{} {}", i, moves);
-                _ = request(&sendstring);
+                //let sendstring = format!("solve lambdaman{} {}", i, moves);
+                let sendstring = make_move(i, &moves);
+                println!("{}", sendstring);
+                //_ = request(&sendstring);
 
                 //println!("通れなかったマスの数: {}", unvisited_count);
             } else {
@@ -176,6 +185,71 @@ fn solve(i: usize) {
         }
         Err(e) => eprintln!("ファイルを読み込めませんでした: {}", e),
     }
+}
+
+fn make_move(id: usize, moves: &str) -> String {
+    let mut num = BigInt::ZERO;
+    let mut target: BigInt = BigInt::ZERO + 1;
+
+    for c in moves.chars() {
+        target = target.clone() * 4; // クローンを使用して所有権を維持
+        match c {
+            'U' => num += 0 * &target, // &targetを使用して参照
+            'R' => num += 1 * &target,
+            'D' => num += 2 * &target,
+            'L' => num += 3 * &target,
+            _ => {}
+        }
+    }
+
+    eprintln!("{}", moves);
+    eprintln!("move {}", num);
+
+    let zero = "I!";
+    let one = "I\"";
+    let two = "I#";
+    //let three = "I$";
+    let four = "I%";
+
+    let su = "SO";
+    let sr = "SL";
+    let sd = "S>";
+    let sl = "SF";
+
+    let y = "Lf B$ Lx B$ vf B$ vx vx Lx B$ vf B$ vx vx";
+
+    // 0: U, 1: R, 2: D, 3: L
+    let choose_char = format!("? B= B% vx {four} {zero} {su} ? B= B% vx {four} {one} {sr} ? B= B% vx {four} {two} {sd} {sl}");
+    // f(x) = choose_char(x%4) . f(x/4)
+    let f = format!("B$ {y} Lf Lx ? B> vx {zero} B. {choose_char} vf B/ vx {four} S");
+
+    let program = format!("B$ {f} {}", encode_i(num));
+
+    let first = format!("solve lambdaman{}", id);
+    let encoded_first = first.chars().map(encode).collect::<String>();
+    let result = format!("B. S{} {}", encoded_first, program);
+
+    result
+}
+
+fn encode_i(inp: BigInt) -> String {
+    let mut i = inp;
+    let zero = BigInt::from(0);
+    let mut s = String::new(); // 空の文字列を初期化
+
+    while i > zero {
+        let r = (i.clone() % 95u32).to_u32().unwrap();
+        s = format!("{}{}", decode_from_i(r), s);
+        i /= 95u32;
+    }
+    format!("I{}", s)
+}
+
+fn decode_from_i(c: u32) -> char {
+    // TODO: make it a constnat
+    //println!("{}", c);
+    //let chars: Vec<_> = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!\"#$%&'()*+,-./:;<=>?@[\\]^_`|~ \n".chars().collect();
+    return (c + 33) as u8 as char;
 }
 
 fn decode(c: char) -> char {

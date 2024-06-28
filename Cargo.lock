@@ -1253,6 +1253,7 @@ dependencies = [
  "itertools",
  "mysql",
  "num-bigint 0.4.6",
+ "num-traits",
  "once_cell",
  "rand 0.8.5",
  "reqwest",
