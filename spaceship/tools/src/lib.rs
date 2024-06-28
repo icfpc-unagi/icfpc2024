@@ -158,12 +158,14 @@ pub fn compute_score_details(
         }
     }
     route.push(p);
-    if visited.iter().any(|&b| !b) {
-        return (
-            0,
-            "Not all points are visited".to_owned(),
-            (p, visited, route),
-        );
+    for i in 0..input.ps.len() {
+        if !visited[i] {
+            return (
+                0,
+                format!("Point {} is not visited", i),
+                (p, visited, route),
+            );
+        }
     }
     (out.len() as i64, String::new(), (p, visited, route))
 }
