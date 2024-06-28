@@ -5,7 +5,7 @@ use num_bigint::BigInt;
 use serde::de;
 use std::rc::Rc;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Node {
     Const(Value),
     Var(BigInt, Option<usize>),  // name, de bruijn index
@@ -404,9 +404,9 @@ fn rec(root: &Node, count: &mut usize) -> Node {
                     if *count > 10_000_000 {
                         panic!("beta reductions limit exceeded");
                     }
-                    dbg!(&exp, &var, &v2);
+                    // dbg!(&exp, &var, &v2);
                     let v = subst(&exp, &var, v2.clone(), 0);
-                    dbg!(&v);
+                    // dbg!(&v);
                     rec(&v, count)
                 } else {
                     panic!("apply of non-lambda");
@@ -433,7 +433,7 @@ fn rec(root: &Node, count: &mut usize) -> Node {
     }
 }
 
-pub fn eval(s: &str) -> Value {
+fn eval_to_node(s: &str) -> Node {
     let tokens = s
         .split_whitespace()
         .map(|s| s.bytes().collect_vec())
@@ -443,9 +443,11 @@ pub fn eval(s: &str) -> Value {
     let root = parse(&tokens, &mut p, &mut binders);
     assert_eq!(p, tokens.len());
     assert_eq!(binders.len(), 0);
-    let ret = rec(&root, &mut 0);
-    // dbg!(&ret);
-    if let Node::Const(val) = ret {
+    rec(&root, &mut 0)
+}
+
+pub fn eval(s: &str) -> Value {
+    if let Node::Const(val) = eval_to_node(s) {
         val
     } else {
         panic!("non-const result)");
@@ -476,4 +478,40 @@ fn test() {
     assert_eq!(eval("? B> I# I$ S9%3 S./"), Value::Str(b"no".to_vec()));
     assert_eq!(eval("B$ B$ L# L$ v# B. SB%,,/ S}Q/2,$_ IK"), Value::Str(b"Hello World!".to_vec()));
     assert_eq!(eval(r#"B$ L# B$ L" B+ v" v" B* I$ I# v8"#), eval("I-"));
+}
+
+#[test]
+fn test2(){
+    // (\y. (\x. (\y. x + y)) y) 3 4
+    assert_eq!(eval("B$ B$ B$ Ly Lx Ly B+ vx vy vy I$ I%"), Value::Int(7.into()));
+
+    // (\x. x + x) 3
+    assert_eq!(eval("B$ Lx B+ vx vx I$"), Value::Int(6.into()));
+    // (\x. (\f. f (f (f x))) (\x. x + x)) 3
+    assert_eq!(eval("B$ Lx B$ Lf B$ vf B$ vf B$ vf vx Lx B+ vx vx I$"), Value::Int(24.into()));
+    // (\y. (\x. (\f. f (f (f x))) (\x. x * y)) 3) 4
+    assert_eq!(eval("B$ Ly B$ Lx B$ Lf B$ vf B$ vf B$ vf vx Lx B* vx vy I$ I%"), Value::Int(192.into()));
+    // (\x. (\y. (\f. f (f (f x))) (\x. x * y)) 4) 3
+    assert_eq!(eval("B$ Lx B$ Ly B$ Lf B$ vf B$ vf B$ vf vx Lx B* vx vy I% I$"), Value::Int(192.into()));
+}
+
+#[test]
+fn test_reduction() {
+    // (\x. x) [x := y]
+    // \x. x
+    assert_eq!(eval_to_node("B$ Lx Lx vx vy"), eval_to_node("Lx vx"));
+
+    // // (\y. x + y) [x := y]
+    // // (\z. y + z)
+    // let mut expected = eval_to_node("Lz B+ vy vz")
+    // // equal up to variable names (we use de bruijn indices)
+    // assert_eq!(eval_to_node("B$ Lx Ly B+ vx vy vy"), expected);
+
+    // (\f. \x. \y. f x y) (\a. \b. a + b - z)
+    // \x. \y. (\a. \b. a + b - z) x y
+    // // \x. \y. x + y - z
+    assert_eq!(
+        eval_to_node("B$ Lf Lx Ly B$ B$ vf vx vy La Lb B- B+ va vb vz"),
+        eval_to_node("Lx Ly B$ B$ La Lb B- B+ va vb vz vx vy")
+    );
 }

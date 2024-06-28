@@ -33,7 +33,7 @@ macro_rules! mat {
 	($e:expr; $d:expr $(; $ds:expr)+) => { Vec::from(vec![mat![$e $(; $ds)*]; $d]) };
 }
 
-const INPUT: [&str; 24] = [
+const INPUT: [&str; 25] = [
     include_str!("../input/spaceship1.txt"),
     include_str!("../input/spaceship2.txt"),
     include_str!("../input/spaceship3.txt"),
@@ -58,6 +58,7 @@ const INPUT: [&str; 24] = [
     include_str!("../input/spaceship22.txt"),
     include_str!("../input/spaceship23.txt"),
     include_str!("../input/spaceship24.txt"),
+    include_str!("../input/spaceship25.txt"),
 ];
 
 #[derive(Clone, Debug)]

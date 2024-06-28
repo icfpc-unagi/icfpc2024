@@ -1,6 +1,6 @@
 use anyhow::Context;
 #[cfg(feature = "reqwest")]
-use reqwest;
+use reqwest::Client;
 use std::fmt::Display;
 
 use itertools::Itertools;
@@ -76,7 +76,7 @@ fn decode_base94(s: &str) -> u128 {
 #[cfg(feature = "reqwest")]
 pub async fn get_bearer_async() -> anyhow::Result<String> {
     let unagi_password = std::env::var("UNAGI_PASSWORD").context("UNAGI_PASSWORD not set")?;
-    let client = reqwest::Client::new();
+    let client = Client::new();
     let res = client
         .get(&format!(
             "https://storage.googleapis.com/icfpc2024-data/{}/bearer.txt",
@@ -120,9 +120,9 @@ pub fn decode(s: &str) -> Box<dyn Display> {
 
 #[cfg(feature = "reqwest")]
 pub async fn communicate_async(message: String) -> Result<String, anyhow::Error> {
-    Ok(reqwest::Client::new()
+    Ok(Client::new()
         .post("https://boundvariable.space/communicate")
-        .header("Authorization", get_bearer()?)
+        .header("Authorization", get_bearer_async().await?)
         .body(message)
         .send()
         .await?

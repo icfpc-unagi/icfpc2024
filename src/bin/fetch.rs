@@ -1,5 +1,5 @@
 use anyhow::Context;
-use reqwest::blocking::Client;
+use reqwest::Client;
 
 fn decode(c: char) -> char {
     // TODO: make it a constnat
@@ -15,15 +15,17 @@ struct HistoryRow {
     createdAt: String,
 }
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     let url = "https://boundvariable.space/team/history?page=1";
     let client = Client::new();
     let res = client
         .get(url)
         .header("Authorization", icfpc2024::get_bearer()?)
-        .send()?;
+        .send()
+        .await?;
 
-    let body = res.text()?;
+    let body = res.text().await?;
     let history: Vec<HistoryRow> = serde_json::from_str(&body)?;
 
     // Display history
@@ -62,10 +64,11 @@ fn main() -> anyhow::Result<()> {
             );
             let res = client
                 .get(url)
-                .header("Authorization", icfpc2024::get_bearer()?)
-                .send()?;
+                .header("Authorization", icfpc2024::get_bearer_async().await?)
+                .send()
+                .await?;
 
-            let body = res.text()?;
+            let body = res.text().await?;
             std::fs::write(&filename, body)
                 .with_context(|| format!("Failed to write to {}", filename))?;
         }
@@ -80,9 +83,10 @@ fn main() -> anyhow::Result<()> {
             let res = client
                 .get(url)
                 .header("Authorization", icfpc2024::get_bearer()?)
-                .send()?;
+                .send()
+                .await?;
 
-            let body = res.text()?;
+            let body = res.text().await?;
             std::fs::write(&filename, body)
                 .with_context(|| format!("Failed to write to {}", filename))?;
         }

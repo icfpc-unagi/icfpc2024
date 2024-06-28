@@ -1,6 +1,7 @@
-use reqwest::blocking::Client;
 use std::thread;
 use std::time::Duration;
+
+use icfpc2024::communicate;
 
 fn decode(c: char) -> char {
     // TODO: make it a constnat
@@ -19,16 +20,8 @@ fn echoeval(input: &str) -> anyhow::Result<String> {
     eprintln!("--------------------------------------------------------------------------------");
     eprintln!("Raw request:\n{}\n", &input);
 
-    let url = "https://boundvariable.space/communicate";
-    let client = Client::new();
+    let body = communicate(r"B. S%#(/} ".to_string() + input)?;
 
-    let res = client
-        .post(url)
-        .body(r"B. S%#(/} ".to_string() + input)
-        .header("Authorization", icfpc2024::get_bearer()?)
-        .send()?;
-
-    let body = res.text()?;
     eprintln!("--------------------------------------------------------------------------------");
     eprintln!("Raw response:\n{}\n", body);
 
@@ -52,16 +45,7 @@ fn request(input: &str) -> anyhow::Result<String> {
     eprintln!("--------------------------------------------------------------------------------");
     eprintln!("Encoded request:\n{}\n", &text);
 
-    let url = "https://boundvariable.space/communicate";
-    let client = Client::new();
-
-    let res = client
-        .post(url)
-        .body(text.to_string())
-        .header("Authorization", icfpc2024::get_bearer()?)
-        .send()?;
-
-    let body = res.text()?;
+    let body = communicate(text.to_string())?;
     eprintln!("--------------------------------------------------------------------------------");
     eprintln!("Raw response:\n{}\n", body);
 

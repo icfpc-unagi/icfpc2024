@@ -1,9 +1,10 @@
-use reqwest::blocking::Client;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
 use std::thread;
 use std::time::Duration;
+
+use icfpc2024::communicate;
 
 type Board = Vec<Vec<char>>;
 
@@ -194,19 +195,8 @@ fn echoeval(input: &str) -> anyhow::Result<String> {
     eprintln!("--------------------------------------------------------------------------------");
     eprintln!("Raw request:\n{}\n", &input);
 
-    let url = "https://boundvariable.space/communicate";
-    let client = Client::new();
+    let body = communicate(r"B. S%#(/} ".to_string() + input)?;
 
-    let res = client
-        .post(url)
-        .body(r"B. S%#(/} ".to_string() + input)
-        .header(
-            "Authorization",
-            "Bearer 1b2a9024-2287-4eac-a58f-66a33726e529",
-        )
-        .send()?;
-
-    let body = res.text()?;
     eprintln!("--------------------------------------------------------------------------------");
     eprintln!("Raw response:\n{}\n", body);
 
@@ -230,20 +220,8 @@ fn request(input: &str) -> anyhow::Result<String> {
     eprintln!("--------------------------------------------------------------------------------");
     eprintln!("Encoded request:\n{}\n", &text);
 
-    let url = "https://boundvariable.space/communicate";
-    let client = Client::new();
+    let body = communicate(text.to_string())?;
 
-    let res = client
-        .post(url)
-        .body(text.to_string())
-        .header(
-            "Authorization",
-            // get_bearer(),
-            "Bearer 1b2a9024-2287-4eac-a58f-66a33726e529",
-        )
-        .send()?;
-
-    let body = res.text()?;
     eprintln!("--------------------------------------------------------------------------------");
     eprintln!("Raw response:\n{}\n", body);
 
