@@ -1,4 +1,4 @@
-use std::any::Any;
+use std::fmt::Display;
 
 #[cfg(feature = "tokio")]
 #[cfg(feature = "reqwest")]
@@ -91,7 +91,7 @@ fn test_encode_base94() {
     assert_eq!(encode_base94(1337), "/6");
 }
 
-pub fn decode(s: &str) -> Box<dyn Any> {
+pub fn decode(s: &str) -> Box<dyn Display> {
     let (indicator, rest) = s.split_at(1);
     match indicator {
         "T" => Box::new(true),
