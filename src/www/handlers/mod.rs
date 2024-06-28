@@ -59,12 +59,12 @@ pub async fn comm(query: web::Query<CommQuery>) -> impl Responder {
             <h4>Decoded response:</h4>
             <textarea placeholder="response" readonly cols="160" rows="20" id="response">{}</textarea>
             <h4>Rendered response:</h4>
-            <section id="rendered" style="font-size:xx-small">
+            <section id="rendered" style="font-size:x-small">
                 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
                 <script>
                     try {{
                         let r = document.getElementById("response");
-                        let md = r.value.replace(/\[(\w+)\](?!\()/g, "[$1](?q=get+$1)");
+                        let md = r.value.replace(/\[([a-z0-9-]+)\](?!\()/g, "[$1](?q=get+$1)");
                         document.write(marked.parse(md));
                     }} catch (e) {{}}
                 </script>
