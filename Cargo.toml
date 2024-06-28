@@ -28,6 +28,7 @@ mysql = { version = "20.1.0", optional = true }
 resvg = { version = "0.35.0", optional = true }
 chrono-humanize = "0.2.2"
 chrono = "0.4.26"
+rust-crypto = "0.2"
 clap = { version = "4.5.7", features = ["derive"] }
 
 [profile.release]
