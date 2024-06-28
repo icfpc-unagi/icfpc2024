@@ -5,6 +5,7 @@ extern crate num_traits;
 
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
+use core::num;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
@@ -188,16 +189,15 @@ fn solve(i: usize) {
 }
 
 fn make_move(id: usize, moves: &str) -> String {
-    let mut num = BigInt::ZERO;
-    let mut target: BigInt = BigInt::ZERO + 1;
+    let mut num: BigInt = BigInt::ZERO + 1;
 
     for c in moves.chars() {
-        target = target.clone() * 4; // クローンを使用して所有権を維持
+        num *= 4;
         match c {
-            'U' => num += 0 * &target, // &targetを使用して参照
-            'R' => num += 1 * &target,
-            'D' => num += 2 * &target,
-            'L' => num += 3 * &target,
+            'U' => num += 0,
+            'R' => num += 1,
+            'D' => num += 2,
+            'L' => num += 3,
             _ => {}
         }
     }
@@ -207,25 +207,24 @@ fn make_move(id: usize, moves: &str) -> String {
 
     let zero = "I!";
     let one = "I\"";
-    let two = "I#";
+    // let two = "I#";
     //let three = "I$";
     let four = "I%";
 
-    let su = "SO";
-    let sr = "SL";
-    let sd = "S>";
-    let sl = "SF";
+    let urdl = "SOL>F";
 
     let y = "Lf B$ Lx B$ vf B$ vx vx Lx B$ vf B$ vx vx";
 
     // 0: U, 1: R, 2: D, 3: L
-    let choose_char = format!("? B= B% vx {four} {zero} {su} ? B= B% vx {four} {one} {sr} ? B= B% vx {four} {two} {sd} {sl}");
+    // let choose_char = format!("? B= B% vx {four} {zero} {su} ? B= B% vx {four} {one} {sr} ? B= B% vx {four} {two} {sd} {sl}");
+    // (take 1 (drop (v2 % 4) "URDL"))
+    let choose_char = format!("BT {one} BD B% vx {four} {urdl}");
     // f(x) = choose_char(x%4) . f(x/4)
-    let f = format!("B$ {y} Lf Lx ? B> vx {zero} B. {choose_char} vf B/ vx {four} S");
+    let f = format!("B$ {y} Lf Lx ? B> vx {one} B. B$ vf B/ vx {four} {choose_char} S");
 
     let program = format!("B$ {f} {}", encode_i(num));
 
-    let first = format!("solve lambdaman{}", id);
+    let first = format!("solve lambdaman{} ", id);
     let encoded_first = first.chars().map(encode).collect::<String>();
     let result = format!("B. S{} {}", encoded_first, program);
 
@@ -311,3 +310,12 @@ fn request(input: &str) -> anyhow::Result<String> {
         Ok(decoded_text)
     }
 }
+
+
+// #[test]
+// fn test_encode_i() {
+//     let num = BigInt::from(1258827021845_i64);
+//     let encoded = encode_i(num.clone());
+//     let decoded = icfpc2024::eval::eval(&encoded);
+//     assert_eq!(format!("{}", decoded), format!("{}", num)); 
+// }
