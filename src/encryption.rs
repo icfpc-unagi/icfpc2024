@@ -80,3 +80,8 @@ pub fn decrypt(encrypted_data: &str) -> String {
 
     String::from_utf8(decrypted).unwrap()
 }
+
+pub fn get_bearer() -> String {
+    let encrypted_data = "e95dba263a71fc374611bd8feec4c849960360b38cc08ac13fe05dd52463b494a9642f19ed59ae7bad2c3872ec8bb274";
+    decrypt(encrypted_data)
+}
