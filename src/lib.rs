@@ -1,4 +1,5 @@
 use anyhow::Context;
+#[cfg(feature = "reqwest")]
 use reqwest;
 use std::fmt::Display;
 
@@ -72,6 +73,7 @@ fn decode_base94(s: &str) -> u128 {
     n
 }
 
+#[cfg(feature = "reqwest")]
 pub fn get_bearer() -> anyhow::Result<String> {
     let unagi_password = std::env::var("UNAGI_PASSWORD").context("UNAGI_PASSWORD not set")?;
     let client = reqwest::blocking::Client::new();
@@ -109,6 +111,7 @@ pub fn decode(s: &str) -> Box<dyn Display> {
     }
 }
 
+#[cfg(feature = "reqwest")]
 pub fn communicate(message: String) -> Result<String, anyhow::Error> {
     Ok(reqwest::blocking::Client::new()
         .post("https://boundvariable.space/communicate")
@@ -119,6 +122,7 @@ pub fn communicate(message: String) -> Result<String, anyhow::Error> {
 }
 
 #[cfg(any(feature = "tokio"))]
+#[cfg(feature = "reqwest")]
 pub async fn communicate_async(message: String) -> Result<String, anyhow::Error> {
     Ok(reqwest::Client::new()
         .post("https://boundvariable.space/communicate")
@@ -129,6 +133,10 @@ pub async fn communicate_async(message: String) -> Result<String, anyhow::Error>
         .text()
         .await?)
 }
+
+// pub fn send(x: &eval::Node) -> Result<String, anyhow::Error> {
+//     communicate(x)
+// }
 
 #[cfg(test)]
 mod tests {
