@@ -1,4 +1,3 @@
-use icfpc2024::encryption::get_bearer;
 use icfpc2024::*;
 use reqwest::blocking::Client;
 use std::io::Read;
@@ -24,7 +23,10 @@ fn main() -> anyhow::Result<()> {
     let res = client
         .post(url)
         .body(text.to_string())
-        .header("Authorization", get_bearer())
+        .header(
+            "Authorization",
+            "Bearer 1b2a9024-2287-4eac-a58f-66a33726e529",
+        )
         .send()?;
 
     let body = res.text()?;

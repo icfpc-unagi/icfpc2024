@@ -13,6 +13,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         App::new()
             .route("/", web::get().to(www::handlers::index))
+            .route("/comm", web::get().to(www::handlers::comm))
             .service(Files::new("/", "/www"))
     })
     .bind(bind_address)?
