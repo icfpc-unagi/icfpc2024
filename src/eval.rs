@@ -2,11 +2,12 @@
 
 use itertools::Itertools;
 use num_bigint::BigInt;
+use serde::de;
 use std::rc::Rc;
 
 pub enum Node {
     Const(Value),
-    Var(BigInt),
+    Var(BigInt, Option<usize>),  // name, de bruijn index
     Unary {
         op: u8,
         v: Rc<Node>,
@@ -27,7 +28,15 @@ pub enum Node {
     },
 }
 
-fn parse(tokens: &[Vec<u8>], p: &mut usize) -> Node {
+// fn parse(tokens: &[Vec<u8>]) -> Node {
+//     let mut p = 0;
+//     let mut binders = vec![];
+//     let res = parse_rec(tokens, &mut p, &mut binders);
+//     assert_eq!(p, tokens.len());
+//     res
+// }
+
+fn parse(tokens: &[Vec<u8>], p: &mut usize, binders: &mut Vec<BigInt>) -> Node {
     let id = tokens[*p][0];
     let body = &tokens[*p][1..];
     *p += 1;
@@ -53,35 +62,38 @@ fn parse(tokens: &[Vec<u8>], p: &mut usize) -> Node {
             assert_eq!(body.len(), 1);
             Node::Unary {
                 op: body[0],
-                v: Rc::new(parse(tokens, p)),
+                v: Rc::new(parse(tokens, p, binders)),
             }
         }
         b'B' => {
             assert_eq!(body.len(), 1);
             Node::Binary {
                 op: body[0],
-                v1: Rc::new(parse(tokens, p)),
-                v2: Rc::new(parse(tokens, p)),
+                v1: Rc::new(parse(tokens, p, binders)),
+                v2: Rc::new(parse(tokens, p, binders)),
             }
         }
         b'?' => {
             assert_eq!(body.len(), 0);
             Node::If {
-                cond: Rc::new(parse(tokens, p)),
-                v1: Rc::new(parse(tokens, p)),
-                v2: Rc::new(parse(tokens, p)),
+                cond: Rc::new(parse(tokens, p, binders)),
+                v1: Rc::new(parse(tokens, p, binders)),
+                v2: Rc::new(parse(tokens, p, binders)),
             }
         }
         b'L' => {
             let mut var = BigInt::from(0);
+            binders.push(var.clone());
             for &b in body {
                 var *= 94;
                 var += b - 33;
             }
-            Node::Lambda {
+            let res = Node::Lambda {
                 var,
-                exp: Rc::new(parse(tokens, p)),
-            }
+                exp: Rc::new(parse(tokens, p, binders)),
+            };
+            binders.pop();
+            res
         }
         b'v' => {
             let mut var = BigInt::from(0);
@@ -89,7 +101,8 @@ fn parse(tokens: &[Vec<u8>], p: &mut usize) -> Node {
                 var *= 94;
                 var += b - 33;
             }
-            Node::Var(var)
+            let de_bruijn_index = binders.iter().rev().position(|b| b == &var);
+            Node::Var(var, de_bruijn_index)
         }
         id => {
             panic!("unknown id: {}", id as char);
@@ -162,11 +175,11 @@ fn subst(root: &Node, var: &BigInt, val: &Rc<Node>) -> Rc<Node> {
                 })
             }
         }
-        Node::Var(var2) => {
+        Node::Var(var2, index) => {
             if var == var2 {
                 val.clone()
             } else {
-                Rc::new(Node::Var(var2.clone()))
+                Rc::new(Node::Var(var2.clone(), *index))
             }
         }
     }
@@ -388,7 +401,7 @@ fn rec(root: &Node, count: &mut usize) -> Node {
         Node::Lambda { .. } => {
             panic!("lambda cannot be evaluated directly");
         }
-        Node::Var(var) => Node::Var(var.clone()),
+        Node::Var(var, index) => Node::Var(var.clone(), *index),
     }
 }
 
@@ -398,8 +411,10 @@ pub fn eval(s: &str) -> Value {
         .map(|s| s.bytes().collect_vec())
         .collect::<Vec<_>>();
     let mut p = 0;
-    let root = parse(&tokens, &mut p);
+    let mut binders = vec![];
+    let root = parse(&tokens, &mut p, &mut binders);
     assert_eq!(p, tokens.len());
+    assert_eq!(binders.len(), 0);
     let ret = rec(&root, &mut 0);
     if let Node::Const(val) = ret {
         val
