@@ -34,3 +34,5 @@ macro_rules! mat {
     ($e:expr; $d:expr) => { vec![$e; $d] };
     ($e:expr; $d:expr $(; $ds:expr)+) => { vec![mat![$e $(; $ds)*]; $d] };
 }
+
+pub mod eval;

@@ -366,7 +366,7 @@ version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1374191e2dd25f9ae02e3aa95041ed5d747fc77b3c102b49fe2dd9a8117a6244"
 dependencies = [
- "num-bigint",
+ "num-bigint 0.2.6",
  "num-integer",
  "num-traits",
  "serde",
@@ -1175,6 +1175,7 @@ dependencies = [
  "indicatif",
  "itertools",
  "mysql",
+ "num-bigint 0.4.6",
  "once_cell",
  "rand 0.8.5",
  "rayon",
@@ -1491,7 +1492,7 @@ dependencies = [
  "flate2",
  "lazy_static",
  "lexical",
- "num-bigint",
+ "num-bigint 0.2.6",
  "num-traits",
  "rand 0.7.3",
  "regex",
@@ -1550,6 +1551,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "090c7f9998ee0ff65aa5b723e4009f7b217707f1fb5ea551329cc4d6231fb304"
 dependencies = [
  "autocfg",
+ "num-integer",
+ "num-traits",
+]
+
+[[package]]
+name = "num-bigint"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5e44f723f1133c9deac646763579fdb3ac745e418f2a7af9cd0c431da1f20b9"
+dependencies = [
  "num-integer",
  "num-traits",
 ]
