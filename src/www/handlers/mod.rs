@@ -15,7 +15,9 @@ use actix_web::{web, HttpResponse, Responder};
 pub async fn index() -> impl Responder {
     HttpResponse::Ok()
         .content_type("text/html")
-        .body(www::handlers::template::render("Hello, world!<br><a href='/comm'>communicate</a>"))
+        .body(www::handlers::template::render(
+            "Hello, world!<br><a href='/comm'>communicate</a>",
+        ))
 }
 use serde::Deserialize;
 
@@ -55,8 +57,21 @@ pub async fn comm(query: web::Query<CommQuery>) -> impl Responder {
                     <button type="submit">Send</button>
                 </div>
             </form>
-            <textarea placeholder="response" readonly cols="160" rows="10">{}</textarea>
-            <textarea placeholder="response" readonly cols="160" rows="50">{}</textarea>
+            <h4>Raw response:</h4>
+            <textarea placeholder="raw response" readonly cols="160" rows="10">{}</textarea>
+            <h4>Decoded response:</h4>
+            <textarea placeholder="response" readonly cols="160" rows="20" id="response">{}</textarea>
+            <h4>Rendered response:</h4>
+            <section id="rendered" style="font-size:xx-small">
+                <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+                <script>
+                    try {{
+                        let r = document.getElementById("response");
+                        let md = r.value.replace(/\[(\w+)\](?!\()/g, "[$1](?q=get+$1)");
+                        document.write(marked.parse(md));
+                    }} catch (e) {{}}
+                </script>
+            </section>
             "#,
             query.q,
             if query.raw { " checked" } else { "" },
