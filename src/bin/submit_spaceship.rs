@@ -1,5 +1,5 @@
 use clap::Parser;
-use reqwest::blocking::Client;
+use icfpc2024::communicate;
 use std::fs;
 use std::io::prelude::*;
 use std::thread;
@@ -27,16 +27,8 @@ fn request(input: &str) -> anyhow::Result<String> {
     // eprintln!("--------------------------------------------------------------------------------");
     // eprintln!("Encoded request:\n{}\n", &text);
 
-    let url = "https://boundvariable.space/communicate";
-    let client = Client::new();
+    let body = communicate(text.to_string())?;
 
-    let res = client
-        .post(url)
-        .body(text.to_string())
-        .header("Authorization", icfpc2024::get_bearer()?)
-        .send()?;
-
-    let body = res.text()?;
     eprintln!("--------------------------------------------------------------------------------");
     eprintln!("Raw response:\n{}\n", body);
 
