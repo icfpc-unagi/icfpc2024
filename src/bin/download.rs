@@ -1,6 +1,4 @@
-use icfpc2024::encryption::get_bearer;
 use reqwest::blocking::Client;
-use std::io::Read;
 use std::thread;
 use std::time::Duration;
 
@@ -88,12 +86,21 @@ fn request(input: &str) -> anyhow::Result<String> {
 }
 
 fn main() -> anyhow::Result<()> {
+    for i in 1..25 {
+        let input = format!("get spaceship{}", i);
+        let output = request(&input)?;
+        std::fs::write(format!("./input/spaceship/spaceship{}.txt", i), output)?;
+        thread::sleep(Duration::from_secs(3));
+    }
+
+    /*
     for i in 21..22 {
         let input = format!("get lambdaman{}", i);
         let output = request(&input)?;
         std::fs::write(format!("./input/lambdaman/lambdaman{}.txt", i), output)?;
         thread::sleep(Duration::from_secs(3));
     }
+    */
 
     Ok(())
 }
