@@ -20,10 +20,7 @@ fn main() -> anyhow::Result<()> {
     let client = Client::new();
     let res = client
         .get(url)
-        .header(
-            "Authorization",
-            "Bearer 1b2a9024-2287-4eac-a58f-66a33726e529",
-        )
+        .header("Authorization", icfpc2024::get_bearer()?)
         .send()?;
 
     let body = res.text()?;
@@ -65,10 +62,7 @@ fn main() -> anyhow::Result<()> {
             );
             let res = client
                 .get(url)
-                .header(
-                    "Authorization",
-                    "Bearer 1b2a9024-2287-4eac-a58f-66a33726e529",
-                )
+                .header("Authorization", icfpc2024::get_bearer()?)
                 .send()?;
 
             let body = res.text()?;
@@ -85,10 +79,7 @@ fn main() -> anyhow::Result<()> {
             );
             let res = client
                 .get(url)
-                .header(
-                    "Authorization",
-                    "Bearer 1b2a9024-2287-4eac-a58f-66a33726e529",
-                )
+                .header("Authorization", icfpc2024::get_bearer()?)
                 .send()?;
 
             let body = res.text()?;

@@ -25,10 +25,7 @@ fn echoeval(input: &str) -> anyhow::Result<String> {
     let res = client
         .post(url)
         .body(r"B. S%#(/} ".to_string() + input)
-        .header(
-            "Authorization",
-            "Bearer 1b2a9024-2287-4eac-a58f-66a33726e529",
-        )
+        .header("Authorization", icfpc2024::get_bearer()?)
         .send()?;
 
     let body = res.text()?;
@@ -61,11 +58,7 @@ fn request(input: &str) -> anyhow::Result<String> {
     let res = client
         .post(url)
         .body(text.to_string())
-        .header(
-            "Authorization",
-            // get_bearer(),
-            "Bearer 1b2a9024-2287-4eac-a58f-66a33726e529",
-        )
+        .header("Authorization", icfpc2024::get_bearer()?)
         .send()?;
 
     let body = res.text()?;
