@@ -39,29 +39,29 @@ macro_rules! mat {
     ($e:expr; $d:expr $(; $ds:expr)+) => { vec![mat![$e $(; $ds)*]; $d] };
 }
 
-fn encode_char(c: char) -> char {
+pub fn encode_char(c: char) -> Option<char> {
     // TODO: make it a constant
     let chars: Vec<_> = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!\"#$%&'()*+,-./:;<=>?@[\\]^_`|~ \n".chars().collect();
-    let index = chars.iter().position(|&x| x == c).unwrap();
-    return (index + 33) as u8 as char;
+    let index = chars.iter().position(|&x| x == c)?;
+    return Some((index + 33) as u8 as char);
 }
 
-fn decode_char(c: char) -> char {
-    // TODO: make it a constnat
+pub fn decode_char(c: char) -> Option<char> {
+    // TODO: make it a constant
     let chars: Vec<_> = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!\"#$%&'()*+,-./:;<=>?@[\\]^_`|~ \n".chars().collect();
-    return chars[c as usize - 33];
+    return chars.get((c as usize).checked_sub(33)?).copied();
 }
 
-fn encode_str(s: &str) -> String {
-    s.chars().map(encode_char).collect::<String>()
+pub fn encode_str(s: &str) -> String {
+    s.chars().flat_map(encode_char).collect()
 }
 
-fn decode_str(s: &str) -> String {
-    s.chars().map(decode_char).collect::<String>()
+pub fn decode_str(s: &str) -> String {
+    s.chars().flat_map(decode_char).collect()
 }
 
 // TODO: Implement with bigint
-fn decode_base94(s: &str) -> u128 {
+pub fn decode_base94(s: &str) -> u128 {
     let mut n = 0;
     for c in s.chars() {
         n = n * 94 + (c as u8 - '!' as u8) as u128;
@@ -76,7 +76,7 @@ fn test_decode_base94() {
 }
 
 // TODO: Implement with bigint
-fn encode_base94(mut n: u128) -> String {
+pub fn encode_base94(mut n: u128) -> String {
     let mut chars = vec![];
     while n > 0 {
         chars.push((n % 94 + '!' as u128) as u8 as char);
@@ -91,7 +91,7 @@ fn test_encode_base94() {
     assert_eq!(encode_base94(1337), "/6");
 }
 
-fn decode(s: &str) -> Box<dyn Any> {
+pub fn decode(s: &str) -> Box<dyn Any> {
     let (indicator, rest) = s.split_at(1);
     match indicator {
         "T" => Box::new(true),
