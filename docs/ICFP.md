@@ -100,7 +100,7 @@ should be followed by two ICFPs (let's call them `x` and `y`).
 | `<` | 整数の比較 | `B< I$ I#` -> `false` |
 | `>` | 整数の比較 | `B> I$ I#` -> `true` |
 | `=` | 等価性の比較（整数、ブール値、文字列で動作） | `B= I$ I#` -> `false` |
-| `|` | ブール値のOR | `B| T F` -> `true` |
+| `\|` | ブール値のOR | `B\| T F` -> `true` |
 | `&` | ブール値のAND | `B& T F` -> `false` |
 | `.` | 文字列の連結 | `B. S4% S34` -> `"test"` |
 | `T` | 文字列 y の最初の x 文字を取得 | `BT I$ S4%34` -> `"tes"` |
@@ -117,7 +117,7 @@ should be followed by two ICFPs (let's call them `x` and `y`).
 | `<` | Integer comparison | `B< I$ I#` -\> `false` |
 | `>` | Integer comparison | `B> I$ I#` -\> `true` |
 | `=` | Equality comparison, works for int, bool and string | `B= I$ I#` -\> `false` |
-| `|` | Boolean or | `B| T F` -\> `true` |
+| `\|` | Boolean or | `B\| T F` -\> `true` |
 | `&` | Boolean and | `B& T F` -\> `false` |
 | `.` | String concatenation | `B. S4% S34` -\> `"test"` |
 | `T` | Take first `x` chars of string `y` | `BT I$ S4%34` -\> `"tes"` |
