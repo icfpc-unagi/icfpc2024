@@ -29,13 +29,49 @@ pub enum Node {
     },
 }
 
-// fn parse(tokens: &[Vec<u8>]) -> Node {
-//     let mut p = 0;
-//     let mut binders = vec![];
-//     let res = parse_rec(tokens, &mut p, &mut binders);
-//     assert_eq!(p, tokens.len());
-//     res
-// }
+impl std::fmt::Display for Node {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Node::Const(val) => write!(f, "{}", val.pretty()),
+            Node::Var(name, _index) => {
+                // we don't need index for input (before reduction)
+                write!(f, "v{}", name)
+                // if let Some(index) = index {
+                //     write!(f, "v{}({})", name, index)
+                // } else {
+                //     write!(f, "v{}", name)
+                // }
+            }
+            Node::Unary { op, v } => write!(f, "({} {})", *op as char, v),
+            Node::Binary { op, v1, v2 } => {
+                let op = *op as char;
+                if let Some(fullname) = match op {
+                    'T' => Some("take"),
+                    'D' => Some("drop"),
+                    _ => None,
+                } {
+                    return write!(f, "({} {} {})", fullname, v1, v2)
+                } else {
+                    write!(f, "({} {} {})", v1, op, v2)
+                }
+            },
+            Node::If { cond, v1, v2 } => write!(f, "({} ? {} : {})", cond, v1, v2),
+            Node::Lambda { var, exp } => write!(f, "(\\v{} -> {})", var, exp),
+        }
+    }
+}
+
+pub fn debug_parse(s: &str) -> () {
+    let tokens = s
+        .split_whitespace()
+        .map(|s| s.bytes().collect_vec())
+        .collect::<Vec<_>>();
+    let mut p = 0;
+    let mut binders = vec![];
+    let res = parse(&tokens, &mut p, &mut binders);
+    assert_eq!(p, tokens.len());
+    eprintln!("{}", res);
+}
 
 fn parse(tokens: &[Vec<u8>], p: &mut usize, binders: &mut Vec<BigInt>) -> Node {
     let id = tokens[*p][0];
@@ -124,6 +160,16 @@ impl std::fmt::Display for Value {
             Value::Bool(b) => write!(f, "bool({})", b),
             Value::Int(i) => write!(f, "int({})", i),
             Value::Str(s) => write!(f, "str({})", String::from_utf8_lossy(s)),
+        }
+    }
+}
+
+impl Value {
+    fn pretty(&self) -> String {
+        match self {
+            Value::Bool(b) => b.to_string(),
+            Value::Int(i) => i.to_string(),
+            Value::Str(s) => format!("{:?}", String::from_utf8_lossy(s)),
         }
     }
 }
