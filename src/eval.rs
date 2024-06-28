@@ -493,6 +493,15 @@ fn test2(){
     assert_eq!(eval("B$ Ly B$ Lx B$ Lf B$ vf B$ vf B$ vf vx Lx B* vx vy I$ I%"), Value::Int(192.into()));
     // (\x. (\y. (\f. f (f (f x))) (\x. x * y)) 4) 3
     assert_eq!(eval("B$ Lx B$ Ly B$ Lf B$ vf B$ vf B$ vf vx Lx B* vx vy I% I$"), Value::Int(192.into()));
+
+    // 5! == 120
+    // f(x) := If x > 0 then x * f(x - 1) else 1
+
+    // {\displaystyle Y=\lambda f.\ (\lambda x.f\ (x\ x))\ (\lambda x.f\ (x\ x))}
+    // y = \f. (\x. f (x x)) (\x. f (x x))
+    let y = "Lf B$ Lx B$ vf B$ vx vx Lx B$ vf B$ vx vx";
+    let f = format!(r#"B$ {y} Lf Lx ? B> vx I! B* vx B$ vf B- vx I" I""#);
+    assert_eq!(eval(&format!("B$ {f} I&")), Value::Int(120.into()));
 }
 
 #[test]
