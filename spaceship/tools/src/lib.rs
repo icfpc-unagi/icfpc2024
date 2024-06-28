@@ -141,10 +141,15 @@ pub fn compute_score_details(
     let mut v = (0, 0);
     let mut id = BTreeMap::new();
     for i in 0..input.ps.len() {
-        id.insert(input.ps[i], i);
+        id.entry(input.ps[i]).or_insert(vec![]).push(i);
     }
     let mut visited = vec![false; input.ps.len()];
     let mut route = vec![];
+    if let Some(is) = id.get(&p) {
+        for i in is {
+            visited[*i] = true;
+        }
+    }
     for &mv in out {
         route.push(p);
         let dx = (mv as i32 - 1) % 3 - 1;
@@ -153,8 +158,10 @@ pub fn compute_score_details(
         v.1 += dy;
         p.0 += v.0;
         p.1 += v.1;
-        if let Some(i) = id.get(&p) {
-            visited[*i] = true;
+        if let Some(is) = id.get(&p) {
+            for i in is {
+                visited[*i] = true;
+            }
         }
     }
     route.push(p);
