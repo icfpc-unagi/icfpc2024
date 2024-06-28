@@ -69,6 +69,12 @@ fn decode_base94(s: &str) -> u128 {
     n
 }
 
+#[test]
+fn test_decode_base94() {
+    assert_eq!(decode_base94("\""), 1);
+    assert_eq!(decode_base94("/6"), 1337);
+}
+
 // TODO: Implement with bigint
 fn encode_base94(mut n: u128) -> String {
     let mut chars = vec![];
@@ -77,6 +83,12 @@ fn encode_base94(mut n: u128) -> String {
         n /= 94;
     }
     chars.iter().rev().collect()
+}
+
+#[test]
+fn test_encode_base94() {
+    assert_eq!(encode_base94(1), "\"");
+    assert_eq!(encode_base94(1337), "/6");
 }
 
 fn decode(s: &str) -> Box<dyn Any> {
