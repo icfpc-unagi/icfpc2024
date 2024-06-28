@@ -1,5 +1,6 @@
+use icfpc2024::encryption::get_bearer;
 use reqwest::blocking::Client;
-use std::io::{Read};
+use std::io::Read;
 
 fn decode(c: char) -> char {
     // TODO: make it a constnat
@@ -23,7 +24,7 @@ fn main() -> anyhow::Result<()> {
 
     println!("--------------------------------------------------------------------------------");
     println!("Raw request:\n{}\n", &input);
-    
+
     let text = "S".to_owned() + &input.chars().map(encode).collect::<String>();
 
     println!("--------------------------------------------------------------------------------");
@@ -32,9 +33,10 @@ fn main() -> anyhow::Result<()> {
     let url = "https://boundvariable.space/communicate";
     let client = Client::new();
 
-    let res = client.post(url)
+    let res = client
+        .post(url)
         .body(text.to_string())
-        .header("Authorization", "Bearer 1b2a9024-2287-4eac-a58f-66a33726e529")
+        .header("Authorization", get_bearer())
         .send()?;
 
     let body = res.text()?;
