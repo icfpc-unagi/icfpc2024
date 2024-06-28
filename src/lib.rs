@@ -74,20 +74,27 @@ fn decode_base94(s: &str) -> u128 {
 }
 
 #[cfg(feature = "reqwest")]
-pub fn get_bearer() -> anyhow::Result<String> {
+pub async fn get_bearer_async() -> anyhow::Result<String> {
     let unagi_password = std::env::var("UNAGI_PASSWORD").context("UNAGI_PASSWORD not set")?;
-    let client = reqwest::blocking::Client::new();
+    let client = reqwest::Client::new();
     let res = client
         .get(&format!(
             "https://storage.googleapis.com/icfpc2024-data/{}/bearer.txt",
             unagi_password,
         ))
         .send()
+        .await
         .context("Failed to get bearer")?;
     res.text()
+        .await
         .context("Failed to get bearer")
         .map_err(Into::into)
         .map(|s| format!("Bearer {}", s))
+}
+
+#[cfg(all(feature = "reqwest", feature = "tokio"))]
+pub fn get_bearer() -> anyhow::Result<String> {
+    tokio::runtime::Runtime::new()?.block_on(get_bearer_async())
 }
 
 // TODO: Implement with bigint
@@ -112,17 +119,6 @@ pub fn decode(s: &str) -> Box<dyn Display> {
 }
 
 #[cfg(feature = "reqwest")]
-pub fn communicate(message: String) -> Result<String, anyhow::Error> {
-    Ok(reqwest::blocking::Client::new()
-        .post("https://boundvariable.space/communicate")
-        .header("Authorization", get_bearer()?)
-        .body(message)
-        .send()?
-        .text()?)
-}
-
-#[cfg(any(feature = "tokio"))]
-#[cfg(feature = "reqwest")]
 pub async fn communicate_async(message: String) -> Result<String, anyhow::Error> {
     Ok(reqwest::Client::new()
         .post("https://boundvariable.space/communicate")
@@ -134,9 +130,10 @@ pub async fn communicate_async(message: String) -> Result<String, anyhow::Error>
         .await?)
 }
 
-// pub fn send(x: &eval::Node) -> Result<String, anyhow::Error> {
-//     communicate(x)
-// }
+#[cfg(all(feature = "reqwest", feature = "tokio"))]
+pub fn communicate(message: String) -> Result<String, anyhow::Error> {
+    tokio::runtime::Runtime::new()?.block_on(communicate_async(message))
+}
 
 #[cfg(test)]
 mod tests {
