@@ -1,4 +1,4 @@
-#![allow(non_snake_case)]
+#![allow(non_snake_case, unused)]
 
 use num::*;
 use rand::prelude::*;
@@ -320,7 +320,6 @@ impl<T: Copy> Trace<T> {
 }
 
 use rand::SeedableRng;
-use rustc_hash::FxHashSet;
 use std::collections::BinaryHeap;
 
 #[derive(Clone, Debug)]
