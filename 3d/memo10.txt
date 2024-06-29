@@ -1,0 +1,18 @@
+R=20
+while R > 0:
+	B := 0
+	while A != 0:
+		if A % 100 == 12:
+			A /= 100
+		else if A % 100 == 34:
+			A /= 100
+		else:
+			B = B * 10 + 5 - A % 10
+			A /= 10
+	R -= 1
+	A = B
+
+if A == 0:
+	print(1)
+else:
+	print(0)
