@@ -63,7 +63,7 @@
       try {
         document.getElementById("score").innerHTML = "Score = " + ret.get_score();
         if (ret.get_err() != "") {
-          document.getElementById("score").innerHTML += " <font color='red'>(" + ret.get_error() + ")</font>";
+          document.getElementById("score").innerHTML += " <font color='red'>(" + ret.get_err() + ")</font>";
         }
         document.getElementById("score").innerHTML += ", t = " + ret.get_t(t) + ", ret = " + ret.get_ret();
         document.getElementById("result").innerHTML = ret.vis(t);
