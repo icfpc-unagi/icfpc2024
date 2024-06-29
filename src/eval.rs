@@ -1,9 +1,8 @@
 #![allow(non_snake_case)]
 
 use itertools::Itertools;
-use num_bigint::BigInt;
-use serde::de;
-use std::rc::Rc;
+use num::bigint::BigInt;
+use std::{cell::RefCell, rc::Rc};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Node {
@@ -27,6 +26,11 @@ pub enum Node {
         var: BigInt,
         exp: Rc<Node>,
     },
+    Thunk(Rc<RefCell<Node>>),
+}
+
+fn thunk(v: Node) -> Node {
+    Node::Thunk(Rc::new(RefCell::new(v)))
 }
 
 impl std::fmt::Display for Node {
@@ -57,6 +61,7 @@ impl std::fmt::Display for Node {
             }
             Node::If { cond, v1, v2 } => write!(f, "({} ? {} : {})", cond, v1, v2),
             Node::Lambda { var, exp } => write!(f, "(\\v{} -> {})", var, exp),
+            Node::Thunk(_) => panic!("display thunk"),
         }
     }
 }
@@ -223,12 +228,14 @@ fn subst(root: &Node, var: &BigInt, val: Rc<Node>, level: usize) -> Rc<Node> {
             } else {
                 Rc::new(Node::Var(var2.clone(), *index))
             }
-        }
+        },
+        Node::Thunk(_) => panic!("unevaluated thunk"),
     }
 }
 
 fn shift(root: Rc<Node>, level: usize) -> Rc<Node> {
     match root.as_ref() {
+        Node::Thunk(_) => todo!(),
         Node::Const(val) => Rc::new(Node::Const(val.clone())),
         Node::Unary { op, v } => Rc::new(Node::Unary {
             op: *op,
@@ -477,6 +484,22 @@ fn rec(root: &Node, count: &mut usize) -> Node {
                     panic!("apply of non-lambda");
                 }
             }
+            b'~' => {
+                // call-by-need
+                let lambda = rec(v1, count);
+                if let Node::Lambda { var, exp } = lambda {
+                    *count += 1;
+                    if *count > 10_000_000 {
+                        panic!("beta reductions limit exceeded");
+                    }
+                    let v2: Node = (**v2).clone();
+                    let v2 = thunk(v2);
+                    let v = subst(&exp, &var, Rc::new(v2), 0);
+                    rec(&v, count)
+                } else {
+                    panic!("apply of non-lambda");
+                }
+            }
             op => {
                 panic!("unknown op: {}", op as char);
             }
@@ -495,6 +518,10 @@ fn rec(root: &Node, count: &mut usize) -> Node {
             exp: exp.clone(),
         },
         Node::Var(var, index) => Node::Var(var.clone(), *index),
+        Node::Thunk(_v) => {
+            // let v_inner = v.get_mut();
+            todo!()
+        }
     }
 }
 
