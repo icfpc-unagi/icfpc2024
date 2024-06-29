@@ -1,0 +1,143 @@
+<html>
+
+<head>
+  <title>Visualizer</title>
+  <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
+  <script src="//img.atcoder.jp/public/4432a1b/js/lib/jquery-1.9.1.min.js"></script>
+  <style type="text/css">
+  </style>
+</head>
+
+<body>
+  <p>
+    <label>
+      Input:<br>
+      <textarea id="input" rows="4" style="width:650px;" data-gramm_editor="false" oninput="updateOutput()"></textarea>
+    </label>
+  </p>
+  <p>
+    <label>
+      Program:<br>
+      <textarea id="output" rows="4" style="width:650px;" data-gramm_editor="false" oninput="updateOutput()"></textarea>
+    </label>
+  </p>
+  <p>
+  </p>
+  <p style="display:flex;">
+    <input type="button" id="play" value="▶" style="width:32px;height:32px;bottom:5px;position:relative;">&ensp;
+    <label>
+      slow
+      <input type="range" id="speed" min="1" max="60" value="30" style="width:200px;">
+      fast&emsp;
+    </label>
+    <label>
+      turn:
+      <input type="number" id="turn" value="0" min="0" max="0" style="width:70px;text-align:right;"
+        onchange="update_t(this.value)" />
+    </label>&ensp;
+  </p>
+  <p>
+    <input type="range" id="t_bar" min="0" max="0" value="0" style="width:780px;" onchange="update_t(this.value)"
+      oninput="update_t(this.value)">
+  </p>
+
+  <hr>
+  <p id="score"></p>
+  <div id="result" style="user-select:none">
+  </div>
+  <br>
+
+  <script type="module">
+
+    import init, { parse } from './web_3d.js';
+
+    async function run() {
+      await init();
+    }
+    run();
+
+    var ret;
+
+    function visualize() {
+      const t = Number(document.getElementById("turn").value);
+      try {
+        document.getElementById("score").innerHTML = "Score = " + ret.get_score();
+        if (ret.get_err() != "") {
+          document.getElementById("score").innerHTML += " <font color='red'>(" + ret.get_error() + ")</font>";
+        }
+        document.getElementById("score").innerHTML += ", t = " + ret.get_t(t) + ", ret = " + ret.get_ret();
+        document.getElementById("result").innerHTML = ret.vis(t);
+      } catch (error) {
+        console.log(error);
+        document.getElementById("result").innerHTML = "<p>Invalid</p>";
+      }
+    }
+    window.visualize = visualize;
+
+    function update_t(t) {
+      const max_turn = Number(document.getElementById("turn").max);
+      const new_turn = Math.min(Math.max(0, t), max_turn);
+      document.getElementById("turn").value = new_turn;
+      document.getElementById("t_bar").value = new_turn;
+      visualize();
+    }
+    window.update_t = update_t;
+
+    var prev = Date.now();
+    const play = document.getElementById("play");
+    const speed = document.getElementById("speed");
+
+    function start_autoplay() {
+      if (Number(document.getElementById("turn").value) >= Number(document.getElementById("turn").max)) {
+        document.getElementById("turn").value = 0;
+      }
+      prev = Date.now();
+      play.value = "■";
+      update_t(document.getElementById("turn").value);
+    }
+    window.start_autoplay = start_autoplay;
+
+    function updateOutput() {
+      play.value = "▶";
+      const input = document.getElementById("input").value;
+      const output = document.getElementById("output").value;
+      try {
+        ret = parse(input, output);
+        const t = ret.get_max_turn();
+        document.getElementById("turn").max = t;
+        document.getElementById("t_bar").max = t;
+        update_t(t);
+      } catch (error) {
+        document.getElementById("result").innerHTML = "<p>Invalid</p>";
+      }
+    }
+    window.updateOutput = updateOutput;
+
+    play.onclick = event => {
+      if (play.value == "■") {
+        play.value = "▶";
+      } else {
+        start_autoplay();
+      }
+    }
+
+    function autoplay() {
+      if (play.value == "■") {
+        const now = Date.now();
+        let s = 2000;
+        if ((now - prev) * speed.value >= s) {
+          const inc = Math.floor((now - prev) * speed.value / s);
+          prev += Math.floor(inc * s / speed.value);
+          update_t(Number(document.getElementById("turn").value) + inc);
+          if (Number(document.getElementById("turn").value) >= Number(document.getElementById("turn").max)) {
+            play.value = "▶";
+          }
+        }
+      }
+      requestAnimationFrame(autoplay);
+    }
+    autoplay();
+  </script>
+</body>
+
+</html>
