@@ -355,6 +355,8 @@ pub fn compute_score(out: &Output, input: &[BigInt]) -> Sim {
                                             log,
                                         };
                                     }
+                                    read[i - 1][j] = true;
+                                    read[i][j - 1] = true;
                                     write[i + 1][j] = P::Num(ret.clone());
                                     write[i][j + 1] = P::Num(ret);
                                 }
@@ -392,6 +394,8 @@ pub fn compute_score(out: &Output, input: &[BigInt]) -> Sim {
                                         log,
                                     };
                                 }
+                                read[i - 1][j] = true;
+                                read[i][j - 1] = true;
                                 write[i + 1][j] = crt[i][j - 1].clone();
                                 write[i][j + 1] = crt[i - 1][j].clone();
                             }
