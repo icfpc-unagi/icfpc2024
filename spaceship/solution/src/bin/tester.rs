@@ -26,6 +26,7 @@ fn main() {
             .stdin(std::process::Stdio::from(input_file))
             .stdout(std::process::Stdio::from(output_file))
             .stderr(std::process::Stdio::inherit())
+            .env("INPUT", cli.input.clone())
             .status()
             .expect(&format!("Failed to execute command: {}", cli.cmd));
         let t = std::time::SystemTime::now().duration_since(stime).unwrap();
