@@ -5,7 +5,7 @@ use num_bigint::BigInt;
 use serde::de;
 use std::rc::Rc;
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Node {
     Const(Value),
     Var(BigInt, Option<usize>), // name, de bruijn index
@@ -454,6 +454,21 @@ fn rec(root: &Node, count: &mut usize) -> Node {
                     let v = subst(&exp, &var, v2.clone(), 0);
                     // dbg!(&v);
                     rec(&v, count)
+                } else {
+                    panic!("apply of non-lambda");
+                }
+            }
+            b'!' => {
+                // call by value
+                let lambda = rec(v1, count);
+                if let Node::Lambda { var, exp } = lambda {
+                    let b = rec(v2, count);
+                    *count += 1;
+                    if *count > 10_000_000 {
+                        panic!("beta reductions limit exceeded");
+                    }
+                    let v = subst(&exp, &var, Rc::new(b), 0);
+                    (*v).clone()
                 } else {
                     panic!("apply of non-lambda");
                 }
