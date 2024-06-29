@@ -12,7 +12,7 @@ use std::path::Path;
 use std::thread::{self, sleep};
 use std::time::Duration;
 
-use icfpc2024::communicate;
+use icfpc2024::{communicate, eval};
 
 type Board = Vec<Vec<char>>;
 
@@ -176,10 +176,33 @@ fn solve(i: usize) {
                 //println!("{}", moves);
                 eprintln!("{}", moves.len());
                 //let sendstring = format!("solve lambdaman{} {}", i, moves);
-                let sendstring = make_move(i, &moves);
-                //println!("{}", sendstring);
-                _ = request(&sendstring);
-                sleep(Duration::from_secs(4));
+                let ss = vec![
+                    //"UU".to_string(),
+                    //"RR".to_string(),
+                    //"DD".to_string(),
+                    //"LL".to_string(),
+                    "UUUU".to_string(),
+                    "RRRR".to_string(),
+                    "DDDD".to_string(),
+                    "LLLL".to_string(),
+                    "U".to_string(),
+                    "R".to_string(),
+                    "D".to_string(),
+                    "L".to_string(),
+                ];
+                let sendstring = make_move2(i, &ss, &moves);
+
+                if sendstring != "error" {
+                    //eprintln!("{}", sendstring);
+                    //eprintln!("{}", moves);
+                    //eprintln!("{}", eval::eval(&sendstring));
+
+                    eprintln!("length: {}", sendstring.len());
+                    _ = request(&sendstring);
+                    sleep(Duration::from_secs(4));
+                } else {
+                    eprintln!("error");
+                }
 
                 //println!("通れなかったマスの数: {}", unvisited_count);
             } else {
@@ -188,6 +211,61 @@ fn solve(i: usize) {
         }
         Err(e) => eprintln!("ファイルを読み込めませんでした: {}", e),
     }
+}
+
+fn make_move2(id: usize, ss: &Vec<String>, moves: &str) -> String {
+    let mut num: BigInt = BigInt::ZERO + 1;
+
+    let mut i = 0;
+    loop {
+        let prei = i;
+        for j in 0..ss.len() {
+            if ss[j].len() + i <= moves.len() && moves[i..i + ss[j].len()] == ss[j] {
+                num *= ss.len() as u32;
+                num += j;
+                i += ss[j].len();
+                break;
+            }
+        }
+        if (prei == i) {
+            return "error".to_string();
+        }
+
+        if (i == moves.len()) {
+            break;
+        }
+    }
+
+    let zero = "I!";
+    let one = "I\"";
+    // let two = "I#";
+    //let three = "I$";
+    let four = "I%";
+
+    let y = "Lf B$ Lx B$ vf B$ vx vx Lx B$ vf B$ vx vx";
+
+    let mut choose_char = "".to_string();
+    let div = encode_i(BigInt::ZERO + ss.len());
+    for j in 0..ss.len() - 1 {
+        let ej = encode_i(BigInt::ZERO + j);
+        let esj = encode_str(&ss[j]);
+        choose_char += &format!("? B= B% vx {div} {ej} {esj} ");
+    }
+    let esj_last = encode_str(&ss[ss.len() - 1]);
+    choose_char += esj_last.as_str();
+
+    // let choose_char = format!("? B= B% vx {four} {zero} {su} ? B= B% vx {four} {one} {sr} ? B= B% vx {four} {two} {sd} {sl}");
+    // (take 1 (drop (v2 % 4) "URDL"))
+    // f(x) = choose_char(x%4) . f(x/4)
+    let f = format!("B$ {y} Lf Lx ? B> vx {one} B. B$ vf B/ vx {div} {choose_char} S");
+
+    let program = format!("B$ {f} {}", encode_i(num));
+
+    let first = format!("solve lambdaman{} ", id);
+    let encoded_first = first.chars().map(encode).collect::<String>();
+    let result = format!("B. S{} {}", encoded_first, program);
+
+    result
 }
 
 fn make_move(id: usize, moves: &str) -> String {
@@ -243,6 +321,11 @@ fn encode_i(inp: BigInt) -> String {
         s = format!("{}{}", decode_from_i(r), s);
         i /= 94u32;
     }
+
+    if s == "" {
+        s = "!".to_string();
+    }
+
     format!("I{}", s)
 }
 
@@ -264,6 +347,11 @@ fn encode(c: char) -> char {
     let chars: Vec<_> = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!\"#$%&'()*+,-./:;<=>?@[\\]^_`|~ \n".chars().collect();
     let index = chars.iter().position(|&x| x == c).unwrap();
     return (index + 33) as u8 as char;
+}
+
+fn encode_str(s: &String) -> String {
+    let s2 = s.chars().map(encode).collect::<String>();
+    format!("S{s2}")
 }
 
 fn echoeval(input: &str) -> anyhow::Result<String> {
