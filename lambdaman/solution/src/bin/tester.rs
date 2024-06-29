@@ -11,19 +11,26 @@ struct Cli {
     vis: String,
 }
 
-fn main() {
+fn main2() {
     let cli = Cli::parse();
     {
-        let input_file = std::fs::File::open(&cli.input).expect(&format!("No such input: {}", cli.input));
-        let output_file = std::fs::File::create(&cli.output).expect(&format!("Cannot create {}", cli.output));
+        let id = cli.input[cli.input.len() - 8..cli.input.len() - 4]
+            .parse::<usize>()
+            .unwrap()
+            + 1;
+        let input_file =
+            std::fs::File::open(&cli.input).expect(&format!("No such input: {}", cli.input));
+        let output_file =
+            std::fs::File::create(&cli.output).expect(&format!("Cannot create {}", cli.output));
         let stime = std::time::SystemTime::now();
         let status = std::process::Command::new("sh")
             .arg("-c")
-            .arg(format!("ulimit -Sv 4000000; timeout --foreground 60s {}", cli.cmd)) // for standard problem
+            .arg(format!("ulimit -Sv 4000000; {}", cli.cmd)) // for standard problem
             // .arg(format!("ulimit -Sv 4000000; timeout --foreground 60s ../tools/target/release/tester {}", cli.cmd)) // for interactive problem
             .stdin(std::process::Stdio::from(input_file))
             .stdout(std::process::Stdio::from(output_file))
             .stderr(std::process::Stdio::inherit())
+            .env("INPUT", id.to_string())
             .status()
             .expect(&format!("Failed to execute command: {}", cli.cmd));
         let t = std::time::SystemTime::now().duration_since(stime).unwrap();
@@ -61,4 +68,13 @@ fn main() {
             eprintln!("!log status WA");
         }
     }
+}
+
+fn main() {
+    std::thread::Builder::new()
+        .stack_size(64 * 1024 * 1024)
+        .spawn(main2)
+        .unwrap()
+        .join()
+        .unwrap();
 }

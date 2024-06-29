@@ -150,6 +150,7 @@ pub fn compute_score_details(
     }
     let mut visited = mat![false; input.board.len(); input.board[0].len()];
     for mv in out {
+        let bk = p;
         match mv {
             b'U' => {
                 p.0 -= 1;
@@ -171,7 +172,7 @@ pub fn compute_score_details(
             return (0, "Out of bounds".to_owned(), (p, visited));
         }
         if input.board[p.0][p.1] == '#' {
-            return (0, "Hit wall".to_owned(), (p, visited));
+            p = bk;
         }
         visited[p.0][p.1] = true;
     }
