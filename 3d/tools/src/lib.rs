@@ -133,7 +133,7 @@ pub fn compute_score(out: &Output, input: &[BigInt]) -> Sim {
     }
     let mut t = 0;
     let mut times = vec![crt.clone()];
-    while log.len() < 1000000 {
+    while log.len() < 10000 {
         log.push((t, crt.clone()));
         if t >= times.len() {
             times.push(crt.clone());
@@ -382,7 +382,6 @@ pub fn compute_score(out: &Output, input: &[BigInt]) -> Sim {
                                         log,
                                     };
                                 }
-                                let ret = crt[i - 1][j].clone();
                                 if write[i + 1][j] != P::Empty {
                                     return Sim {
                                         score: 0,
@@ -399,8 +398,8 @@ pub fn compute_score(out: &Output, input: &[BigInt]) -> Sim {
                                         log,
                                     };
                                 }
-                                write[i + 1][j] = ret.clone();
-                                write[i][j + 1] = ret;
+                                write[i + 1][j] = crt[i][j - 1].clone();
+                                write[i][j + 1] = crt[i - 1][j].clone();
                             }
                         }
                         _ => (),
@@ -505,9 +504,8 @@ pub fn vis(sim: &Sim, t: usize) -> String {
                     svg::node::element::Text::new(s.clone())
                         .set("x", j * D + D / 2)
                         .set("y", i * D + D / 2)
-                        .set("font-size", D as f64 / 2.0 / s.len() as f64)
-                        .set("fill", "black")
-                        .add(svg::node::Text::new(s)),
+                        .set("font-size", D as f64 / s.len() as f64)
+                        .set("fill", "black"),
                 ),
             );
         }
