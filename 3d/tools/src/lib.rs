@@ -208,8 +208,10 @@ pub fn compute_score(out: &Output, input: &[BigInt]) -> Sim {
                                                 log,
                                             };
                                         }
-                                        let dx: usize = dx.try_into().unwrap();
-                                        let dy: usize = dy.try_into().unwrap();
+                                        let dx: i32 = dx.try_into().unwrap();
+                                        let dy: i32 = dy.try_into().unwrap();
+                                        let dx = dx as usize;
+                                        let dy = dy as usize;
                                         if write[i - dy][j - dx] != P::Empty
                                             && write[i - dy][j - dx] != crt[i - 1][j]
                                         {
