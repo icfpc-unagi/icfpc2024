@@ -142,42 +142,200 @@ pub fn compute_score(out: &Output, input: &[BigInt]) -> Sim {
         }
         let mut next = crt.clone();
         let mut next_t = !0;
+        let mut read = mat![false; n; m];
+        let mut write = mat![P::Empty; n; m];
         for i in 0..n {
             for j in 0..m {
-                if crt[i][j] == P::Warp {
-                    if i > 0 && crt[i - 1][j] != P::Empty {
-                        if j > 0 && matches!(crt[i][j - 1], P::Num(_)) {
-                            if i + 1 < n && matches!(crt[i + 1][j], P::Num(_)) {
-                                if j + 1 < m && matches!(crt[i][j + 1], P::Num(_)) {
-                                    let P::Num(ref dt) = crt[i + 1][j] else {
-                                        unreachable!()
+                match crt[i][j] {
+                    P::Move(dir) => {
+                        let i2 = i - DIJ[dir].0;
+                        let j2 = j - DIJ[dir].1;
+                        if i2 < n && j2 < m {
+                            if crt[i2][j2] != P::Empty {
+                                read[i2][j2] = true;
+                                let i3 = i + DIJ[dir].0;
+                                let j3 = j + DIJ[dir].1;
+                                if i3 >= n || j3 >= m {
+                                    return Sim {
+                                        score: 0,
+                                        ret: P::Empty,
+                                        err: format!("Out of bounds: ({}, {})", i, j),
+                                        log,
                                     };
-                                    if dt <= &BigInt::from(0) || dt > &BigInt::from(t) {
-                                        return Sim {
-                                            score: 0,
-                                            ret: P::Empty,
-                                            err: format!("Invalid dt: {}", dt),
-                                            log,
-                                        };
+                                }
+                                if write[i3][j3] != P::Empty {
+                                    return Sim {
+                                        score: 0,
+                                        ret: P::Empty,
+                                        err: format!("Conflict write: ({}, {})", i3, j3),
+                                        log,
+                                    };
+                                }
+                                write[i3][j3] = crt[i2][j2].clone();
+                            }
+                        }
+                    }
+                    P::Op(op) => {
+                        if i > 0 && j > 0 && crt[i - 1][j] != P::Empty && crt[i][j - 1] != P::Empty
+                        {
+                            if let (P::Num(x), P::Num(y)) =
+                                (crt[i][j - 1].clone(), crt[i - 1][j].clone())
+                            {
+                                let ret = match op {
+                                    '+' => x + y,
+                                    '-' => x - y,
+                                    '*' => x * y,
+                                    '/' => {
+                                        if y == BigInt::from(0) {
+                                            return Sim {
+                                                score: 0,
+                                                ret: P::Empty,
+                                                err: format!("Division by zero: ({}, {})", i, j),
+                                                log,
+                                            };
+                                        } else {
+                                            x / y
+                                        }
                                     }
-                                    let dt: usize = dt.try_into().unwrap();
-                                    if next_t != !0 && next_t != t - dt {
-                                        return Sim {
-                                            score: 0,
-                                            ret: P::Empty,
-                                            err: format!("Conflict dt: {} vs {}", t - next_t, dt),
-                                            log,
-                                        };
+                                    '%' => {
+                                        if y == BigInt::from(0) {
+                                            return Sim {
+                                                score: 0,
+                                                ret: P::Empty,
+                                                err: format!("Division by zero: ({}, {})", i, j),
+                                                log,
+                                            };
+                                        } else {
+                                            x % y.abs()
+                                        }
                                     }
-                                    next_t = t - dt;
+                                    _ => {
+                                        unreachable!()
+                                    }
+                                };
+                                if i + 1 >= n || j + 1 >= m {
+                                    return Sim {
+                                        score: 0,
+                                        ret: P::Empty,
+                                        err: format!("Out of bounds: ({}, {})", i, j),
+                                        log,
+                                    };
+                                }
+                                if write[i + 1][j] != P::Empty {
+                                    return Sim {
+                                        score: 0,
+                                        ret: P::Empty,
+                                        err: format!("Conflict write: ({}, {})", i + 1, j),
+                                        log,
+                                    };
+                                }
+                                if write[i][j + 1] != P::Empty {
+                                    return Sim {
+                                        score: 0,
+                                        ret: P::Empty,
+                                        err: format!("Conflict write: ({}, {})", i, j + 1),
+                                        log,
+                                    };
+                                }
+                                read[i - 1][j] = true;
+                                read[i][j - 1] = true;
+                                write[i + 1][j] = P::Num(ret.clone());
+                                write[i][j + 1] = P::Num(ret);
+                            }
+                        }
+                    }
+                    P::Eq | P::Neq => {
+                        if i > 0
+                            && j > 0
+                            && crt[i - 1][j] != P::Empty
+                            && crt[i][j - 1] != P::Empty
+                            && (crt[i][j] == P::Eq && crt[i - 1][j] == crt[i][j - 1]
+                                || crt[i][j] == P::Neq && crt[i - 1][j] != crt[i][j - 1])
+                        {
+                            if i + 1 >= n || j + 1 >= m {
+                                return Sim {
+                                    score: 0,
+                                    ret: P::Empty,
+                                    err: format!("Out of bounds: ({}, {})", i, j),
+                                    log,
+                                };
+                            }
+                            if write[i + 1][j] != P::Empty {
+                                return Sim {
+                                    score: 0,
+                                    ret: P::Empty,
+                                    err: format!("Conflict write: ({}, {})", i + 1, j),
+                                    log,
+                                };
+                            }
+                            if write[i][j + 1] != P::Empty {
+                                return Sim {
+                                    score: 0,
+                                    ret: P::Empty,
+                                    err: format!("Conflict write: ({}, {})", i, j + 1),
+                                    log,
+                                };
+                            }
+                            read[i - 1][j] = true;
+                            read[i][j - 1] = true;
+                            write[i + 1][j] = crt[i][j - 1].clone();
+                            write[i][j + 1] = crt[i - 1][j].clone();
+                        }
+                    }
+                    P::Warp => {
+                        if i > 0 && crt[i - 1][j] != P::Empty {
+                            if j > 0 && matches!(crt[i][j - 1], P::Num(_)) {
+                                if i + 1 < n && matches!(crt[i + 1][j], P::Num(_)) {
+                                    if j + 1 < m && matches!(crt[i][j + 1], P::Num(_)) {
+                                        let P::Num(ref dt) = crt[i + 1][j] else {
+                                            unreachable!()
+                                        };
+                                        if dt <= &BigInt::from(0) || dt > &BigInt::from(t) {
+                                            return Sim {
+                                                score: 0,
+                                                ret: P::Empty,
+                                                err: format!("Invalid dt: {}", dt),
+                                                log,
+                                            };
+                                        }
+                                        let dt: usize = dt.try_into().unwrap();
+                                        if next_t != !0 && next_t != t - dt {
+                                            return Sim {
+                                                score: 0,
+                                                ret: P::Empty,
+                                                err: format!(
+                                                    "Conflict dt: {} vs {}",
+                                                    t - next_t,
+                                                    dt
+                                                ),
+                                                log,
+                                            };
+                                        }
+                                        next_t = t - dt;
+                                    }
                                 }
                             }
                         }
                     }
+                    _ => (),
                 }
             }
         }
         if next_t != !0 {
+            for i in 0..n {
+                for j in 0..m {
+                    if write[i][j] != P::Empty {
+                        if next[i][j] == P::Submit {
+                            return Sim {
+                                score: (n * m * (times.len() + 1)) as i64,
+                                ret: write[i][j].clone(),
+                                err: String::new(),
+                                log,
+                            };
+                        }
+                    }
+                }
+            }
             let mut write = mat![P::Empty; n; m];
             for i in 0..n {
                 for j in 0..m {
@@ -251,159 +409,6 @@ pub fn compute_score(out: &Output, input: &[BigInt]) -> Sim {
                 }
             }
         } else {
-            let mut read = mat![false; n; m];
-            let mut write = mat![P::Empty; n; m];
-            for i in 0..n {
-                for j in 0..m {
-                    match crt[i][j] {
-                        P::Move(dir) => {
-                            let i2 = i - DIJ[dir].0;
-                            let j2 = j - DIJ[dir].1;
-                            if i2 < n && j2 < m {
-                                if crt[i2][j2] != P::Empty {
-                                    read[i2][j2] = true;
-                                    let i3 = i + DIJ[dir].0;
-                                    let j3 = j + DIJ[dir].1;
-                                    if i3 >= n || j3 >= m {
-                                        return Sim {
-                                            score: 0,
-                                            ret: P::Empty,
-                                            err: format!("Out of bounds: ({}, {})", i, j),
-                                            log,
-                                        };
-                                    }
-                                    if write[i3][j3] != P::Empty {
-                                        return Sim {
-                                            score: 0,
-                                            ret: P::Empty,
-                                            err: format!("Conflict write: ({}, {})", i3, j3),
-                                            log,
-                                        };
-                                    }
-                                    write[i3][j3] = crt[i2][j2].clone();
-                                }
-                            }
-                        }
-                        P::Op(op) => {
-                            if i > 0
-                                && j > 0
-                                && crt[i - 1][j] != P::Empty
-                                && crt[i][j - 1] != P::Empty
-                            {
-                                if let (P::Num(x), P::Num(y)) =
-                                    (crt[i][j - 1].clone(), crt[i - 1][j].clone())
-                                {
-                                    let ret = match op {
-                                        '+' => x + y,
-                                        '-' => x - y,
-                                        '*' => x * y,
-                                        '/' => {
-                                            if y == BigInt::from(0) {
-                                                return Sim {
-                                                    score: 0,
-                                                    ret: P::Empty,
-                                                    err: format!(
-                                                        "Division by zero: ({}, {})",
-                                                        i, j
-                                                    ),
-                                                    log,
-                                                };
-                                            } else {
-                                                x / y
-                                            }
-                                        }
-                                        '%' => {
-                                            if y == BigInt::from(0) {
-                                                return Sim {
-                                                    score: 0,
-                                                    ret: P::Empty,
-                                                    err: format!(
-                                                        "Division by zero: ({}, {})",
-                                                        i, j
-                                                    ),
-                                                    log,
-                                                };
-                                            } else {
-                                                x % y.abs()
-                                            }
-                                        }
-                                        _ => {
-                                            unreachable!()
-                                        }
-                                    };
-                                    if i + 1 >= n || j + 1 >= m {
-                                        return Sim {
-                                            score: 0,
-                                            ret: P::Empty,
-                                            err: format!("Out of bounds: ({}, {})", i, j),
-                                            log,
-                                        };
-                                    }
-                                    if write[i + 1][j] != P::Empty {
-                                        return Sim {
-                                            score: 0,
-                                            ret: P::Empty,
-                                            err: format!("Conflict write: ({}, {})", i + 1, j),
-                                            log,
-                                        };
-                                    }
-                                    if write[i][j + 1] != P::Empty {
-                                        return Sim {
-                                            score: 0,
-                                            ret: P::Empty,
-                                            err: format!("Conflict write: ({}, {})", i, j + 1),
-                                            log,
-                                        };
-                                    }
-                                    read[i - 1][j] = true;
-                                    read[i][j - 1] = true;
-                                    write[i + 1][j] = P::Num(ret.clone());
-                                    write[i][j + 1] = P::Num(ret);
-                                }
-                            }
-                        }
-                        P::Eq | P::Neq => {
-                            if i > 0
-                                && j > 0
-                                && crt[i - 1][j] != P::Empty
-                                && crt[i][j - 1] != P::Empty
-                                && (crt[i][j] == P::Eq && crt[i - 1][j] == crt[i][j - 1]
-                                    || crt[i][j] == P::Neq && crt[i - 1][j] != crt[i][j - 1])
-                            {
-                                if i + 1 >= n || j + 1 >= m {
-                                    return Sim {
-                                        score: 0,
-                                        ret: P::Empty,
-                                        err: format!("Out of bounds: ({}, {})", i, j),
-                                        log,
-                                    };
-                                }
-                                if write[i + 1][j] != P::Empty {
-                                    return Sim {
-                                        score: 0,
-                                        ret: P::Empty,
-                                        err: format!("Conflict write: ({}, {})", i + 1, j),
-                                        log,
-                                    };
-                                }
-                                if write[i][j + 1] != P::Empty {
-                                    return Sim {
-                                        score: 0,
-                                        ret: P::Empty,
-                                        err: format!("Conflict write: ({}, {})", i, j + 1),
-                                        log,
-                                    };
-                                }
-                                read[i - 1][j] = true;
-                                read[i][j - 1] = true;
-                                write[i + 1][j] = crt[i][j - 1].clone();
-                                write[i][j + 1] = crt[i - 1][j].clone();
-                            }
-                        }
-                        _ => (),
-                    }
-                }
-            }
             for i in 0..n {
                 for j in 0..m {
                     if read[i][j] {
