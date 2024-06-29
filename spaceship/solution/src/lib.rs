@@ -333,8 +333,8 @@ impl<K: PartialOrd + Copy, V: Clone> BoundedSortedList<K, V> {
             }
         }
     }
-    pub fn list(&self) -> Vec<(K, V)> {
-        let v = self.que.clone().into_sorted_vec();
+    pub fn list(self) -> Vec<(K, V)> {
+        let v = self.que.into_sorted_vec();
         v.into_iter().map(|e| (e.k, e.v)).collect()
     }
     pub fn len(&self) -> usize {

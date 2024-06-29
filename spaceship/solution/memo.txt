@@ -1,0 +1,33 @@
+spaceship9 Your score: 213. Best score: 212.
+	固定経路
+spaceship13 Your score: 23838. Best score: 23791.
+	多分固定経路で良い
+spaceship14 Your score: 210. Best score: 137.
+	専用ソルバ
+spaceship15 Your score: 40. Best score: 39.
+	交差部分の通る順番が違う？
+spaceship18 Your score: 2151. Best score: 1959.
+	任意経路
+spaceship20 Your score: 2741. Best score: 2394.
+	渦巻き
+spaceship21 Your score: 2740. Best score: 2437.
+	渦巻き
+spaceship23 Your score: 191144. Best score: 168502.
+	固定経路
+spaceship24 Your score: 817078. Best score: 630010.
+	任意経路
+spaceship25 Your score: 827189. Best score: 620638.
+	任意経路
+
+連続して取る
+
+spaceship9 Your score: 213. Best score: 212.
+spaceship13 Your score: 23838. Best score: 23791.
+spaceship14 Your score: 139. Best score: 137.
+spaceship15 Your score: 40. Best score: 39.
+spaceship18 Your score: 2151. Best score: 1959.
+spaceship20 Your score: 2734. Best score: 2394.
+spaceship21 Your score: 2734. Best score: 2437.
+spaceship23 Your score: 191142. Best score: 168502.
+spaceship24 Your score: 675780. Best score: 630010.
+spaceship25 Your score: 727543. Best score: 620638.

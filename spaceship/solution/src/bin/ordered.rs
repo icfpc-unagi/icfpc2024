@@ -12,17 +12,33 @@ fn get_order(input: &Input) -> Vec<usize> {
         return solution::read_order(input, &best);
     }
     if input.ps.len() > 10000 {
-        let mut order = vec![];
-        let mut visited = vec![false; input.ps.len()];
-        let mut p = (0, 0);
-        for _ in 0..input.ps.len() {
-            let i = (0..input.ps.len())
-                .filter(|&i| !visited[i])
-                .min_by_key(|&i| (input.ps[i].0 - p.0).abs() + (input.ps[i].1 - p.1).abs())
-                .unwrap();
-            order.push(i);
-            visited[i] = true;
-            p = input.ps[i];
+        let mut order = vec![0];
+        for i in 1..input.ps.len() {
+            let mut min = i64::MAX;
+            let mut p = 0;
+            for j in 0..order.len() {
+                let prev = if j == 0 {
+                    (0, 0)
+                } else {
+                    input.ps[order[j - 1]]
+                };
+                let next = input.ps[order[j]];
+                let d = (input.ps[i].0 - prev.0).abs()
+                    + (input.ps[i].1 - prev.1).abs()
+                    + (input.ps[i].0 - next.0).abs()
+                    + (input.ps[i].1 - next.1).abs()
+                    - (next.0 - prev.0).abs()
+                    - (next.1 - prev.1).abs();
+                if min.setmin(d) {
+                    p = j;
+                }
+            }
+            let d = (input.ps[i].0 - input.ps[order[order.len() - 1]].0).abs()
+                + (input.ps[i].1 - input.ps[order[order.len() - 1]].1).abs();
+            if min.setmin(d) {
+                p = order.len();
+            }
+            order.insert(p, i);
         }
         return order;
     }
@@ -69,12 +85,21 @@ fn main() {
         t: 0,
         id: !0,
     }];
+    // for i in 1..input.ps.len() {
+    //     eprintln!(
+    //         "{}\t{}",
+    //         input.ps[order[i]].0 - input.ps[order[i - 1]].0,
+    //         input.ps[order[i]].1 - input.ps[order[i - 1]].1
+    //     );
+    // }
     let mut trace = Trace::new();
     let stime = get_time();
-    let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(483290);
+    let mut rng = rand_pcg::Pcg64::seed_from_u64(thread_rng().gen());
     for k in 0..input.ps.len() {
         let mut next = vec![];
+        let mut w = 0;
         for state in beam {
+            w += 1;
             let i = order[k];
             let mut T = 0;
             loop {
@@ -96,55 +121,56 @@ fn main() {
                     if state.v.1 * T - T * (T + 1) / 2 <= dy
                         && dy <= state.v.1 * T + T * (T + 1) / 2
                     {
-                        for _ in 0..100 {
+                        let mut used = FxHashSet::default();
+                        for _ in 0..1000 {
                             let mut p = state.p;
                             let mut v = state.v;
                             let mut id = state.id;
+                            let mut tmp = vec![];
                             for t in 0..T {
-                                let dvx = if p.0 + v.0 * (T - t) - (T - t) * (T - t - 1) / 2
-                                    <= input.ps[i].0
-                                    && input.ps[i].0
-                                        <= p.0 + v.0 * (T - t) + (T - t) * (T - t - 1) / 2
-                                    && rng.gen_bool(0.5)
-                                {
-                                    0
-                                } else if p.0 + v.0 * (T - t) < input.ps[i].0 {
-                                    1
-                                } else if p.0 + v.0 * (T - t) > input.ps[i].0 {
-                                    -1
-                                } else {
-                                    0
-                                };
-                                let dvy = if p.1 + v.1 * (T - t) - (T - t) * (T - t - 1) / 2
-                                    <= input.ps[i].1
-                                    && input.ps[i].1
-                                        <= p.1 + v.1 * (T - t) + (T - t) * (T - t - 1) / 2
-                                    && rng.gen_bool(0.5)
-                                {
-                                    0
-                                } else if p.1 + v.1 * (T - t) < input.ps[i].1 {
-                                    1
-                                } else if p.1 + v.1 * (T - t) > input.ps[i].1 {
-                                    -1
-                                } else {
-                                    0
-                                };
+                                let cand = (-1..=1)
+                                    .filter(|&a| {
+                                        p.0 + (v.0 + a) * (T - t) - (T - t) * (T - t - 1) / 2
+                                            <= input.ps[i].0
+                                            && input.ps[i].0
+                                                <= p.0
+                                                    + (v.0 + a) * (T - t)
+                                                    + (T - t) * (T - t - 1) / 2
+                                    })
+                                    .collect_vec();
+                                let dvx = *cand.choose(&mut rng).unwrap();
+                                let cand = (-1..=1)
+                                    .filter(|&a| {
+                                        p.1 + (v.1 + a) * (T - t) - (T - t) * (T - t - 1) / 2
+                                            <= input.ps[i].1
+                                            && input.ps[i].1
+                                                <= p.1
+                                                    + (v.1 + a) * (T - t)
+                                                    + (T - t) * (T - t - 1) / 2
+                                    })
+                                    .collect_vec();
+                                let dvy = *cand.choose(&mut rng).unwrap();
                                 v.0 += dvx;
                                 v.1 += dvy;
                                 p.0 += v.0;
                                 p.1 += v.1;
-                                id = trace.add((dvy + 1) * 3 + dvx + 1 + 1, id);
+                                tmp.push((dvy + 1) * 3 + dvx + 1 + 1);
                             }
                             assert_eq!(p, input.ps[i]);
-                            let mut visited = state.visited.clone();
-                            visited[i] = true;
-                            next.push(State {
-                                visited,
-                                p,
-                                v,
-                                t: state.t + T,
-                                id,
-                            });
+                            if used.insert(v) {
+                                for mv in tmp {
+                                    id = trace.add(mv, id);
+                                }
+                                let mut visited = state.visited.clone();
+                                visited[i] = true;
+                                next.push(State {
+                                    visited,
+                                    p,
+                                    v,
+                                    t: state.t + T,
+                                    id,
+                                });
+                            }
                         }
                     }
                 }
@@ -154,7 +180,8 @@ fn main() {
                 break;
             }
         }
-        next.sort_by_key(|s| s.t);
+        next.sort_by_key(|s| s.t + s.v.0.abs() + s.v.1.abs());
+        eprintln!("{} / {}: w = {}, t = {}", k, input.ps.len(), w, next[0].t);
         beam = vec![];
         let mut used = FxHashSet::default();
         for s in next {
@@ -174,7 +201,8 @@ fn main() {
             s.id = if s.id == !0 { !0 } else { ids[s.id] };
         }
     }
-    for mv in trace.get(beam[0].id) {
+    let b = beam.iter().min_by_key(|s| s.t).unwrap();
+    for mv in trace.get(b.id) {
         println!("{}", mv);
     }
     eprintln!("Time = {:.3}", get_time());
