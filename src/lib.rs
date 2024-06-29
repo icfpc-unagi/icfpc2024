@@ -4,6 +4,7 @@ use reqwest::Client;
 use std::fmt::Display;
 
 use itertools::Itertools;
+use num::bigint::BigInt;
 
 #[cfg(feature = "tokio")]
 #[cfg(feature = "reqwest")]
@@ -106,6 +107,26 @@ fn encode_base94(mut n: u128) -> String {
     }
     chars.iter().rev().collect()
 }
+
+
+pub fn encode_bigint(inp: BigInt) -> String {
+    let mut i = inp;
+    let zero = BigInt::from(0);
+    let mut s = String::new(); // 空の文字列を初期化
+
+    while i > zero {
+        let r: u32 = (i.clone() % 94u32).try_into().unwrap();
+        s = format!("{}{}", (r + 33) as u8 as char, s);
+        i /= 94u32;
+    }
+
+    if s == "" {
+        s = "!".to_string();
+    }
+
+    format!("I{}", s)
+}
+
 
 pub fn decode(s: &str) -> Box<dyn Display> {
     let (indicator, rest) = s.split_at(1);
