@@ -290,7 +290,6 @@ pub fn compute_score(out: &Output, input: &[BigInt]) -> Sim {
                                 && crt[i - 1][j] != P::Empty
                                 && crt[i][j - 1] != P::Empty
                             {
-                                // 数値以外の場合はエラーで良い？
                                 if let (P::Num(x), P::Num(y)) =
                                     (crt[i][j - 1].clone(), crt[i - 1][j].clone())
                                 {
@@ -358,13 +357,6 @@ pub fn compute_score(out: &Output, input: &[BigInt]) -> Sim {
                                     }
                                     write[i + 1][j] = P::Num(ret.clone());
                                     write[i][j + 1] = P::Num(ret);
-                                } else {
-                                    return Sim {
-                                        score: 0,
-                                        ret: P::Empty,
-                                        err: format!("Invalid op: ({}, {})", i, j),
-                                        log,
-                                    };
                                 }
                             }
                         }
