@@ -49,6 +49,8 @@ fn request(input: &str) -> anyhow::Result<String> {
     eprintln!("--------------------------------------------------------------------------------");
     eprintln!("Raw response:\n{}\n", body);
 
+    return Ok(body); // !!! FOR EFFICIENCY!!!
+
     if body.starts_with("B") {
         thread::sleep(Duration::from_secs(3));
         echoeval(&body)
@@ -63,6 +65,14 @@ fn request(input: &str) -> anyhow::Result<String> {
 }
 
 fn main() -> anyhow::Result<()> {
+    for i in 1..14 {
+        let input = format!("get efficiency{}", i);
+        let output = request(&input)?;
+        std::fs::write(format!("./input/efficiency/efficiency{}.txt", i), output)?;
+        thread::sleep(Duration::from_secs(3));
+    }
+    return Ok(());
+
     for i in 1..13 {
         let input = format!("get 3d{}", i);
         let output = request(&input)?;
