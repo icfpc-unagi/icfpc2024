@@ -13,6 +13,8 @@ pub mod www;
 #[cfg(feature = "mysql")]
 pub mod sql;
 
+pub mod lambdaman;
+
 pub trait SetMinMax {
     fn setmin(&mut self, v: Self) -> bool;
     fn setmax(&mut self, v: Self) -> bool;
@@ -108,7 +110,6 @@ fn encode_base94(mut n: u128) -> String {
     chars.iter().rev().collect()
 }
 
-
 pub fn encode_bigint(inp: BigInt) -> String {
     let mut i = inp;
     let zero = BigInt::from(0);
@@ -126,7 +127,6 @@ pub fn encode_bigint(inp: BigInt) -> String {
 
     format!("I{}", s)
 }
-
 
 pub fn decode(s: &str) -> Box<dyn Display> {
     let (indicator, rest) = s.split_at(1);
