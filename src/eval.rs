@@ -8,7 +8,7 @@ use std::rc::Rc;
 #[derive(Debug, PartialEq)]
 pub enum Node {
     Const(Value),
-    Var(BigInt, Option<usize>),  // name, de bruijn index
+    Var(BigInt, Option<usize>), // name, de bruijn index
     Unary {
         op: u8,
         v: Rc<Node>,
@@ -50,11 +50,11 @@ impl std::fmt::Display for Node {
                     'D' => Some("drop"),
                     _ => None,
                 } {
-                    return write!(f, "({} {} {})", fullname, v1, v2)
+                    return write!(f, "({} {} {})", fullname, v1, v2);
                 } else {
                     write!(f, "({} {} {})", v1, op, v2)
                 }
-            },
+            }
             Node::If { cond, v1, v2 } => write!(f, "({} ? {} : {})", cond, v1, v2),
             Node::Lambda { var, exp } => write!(f, "(\\v{} -> {})", var, exp),
         }
@@ -73,7 +73,7 @@ pub fn debug_parse(s: &str) -> () {
     eprintln!("{}", res);
 }
 
-fn parse(tokens: &[Vec<u8>], p: &mut usize, binders: &mut Vec<BigInt>) -> Node {
+pub fn parse(tokens: &[Vec<u8>], p: &mut usize, binders: &mut Vec<BigInt>) -> Node {
     let id = tokens[*p][0];
     let body = &tokens[*p][1..];
     *p += 1;
@@ -251,7 +251,7 @@ fn shift(root: Rc<Node>, level: usize) -> Rc<Node> {
         Node::Var(var, index) => {
             let index = index.map(|i| if i >= level { i + 1 } else { i });
             Rc::new(Node::Var(var.clone(), index))
-        },
+        }
     }
 }
 
@@ -480,7 +480,7 @@ fn rec(root: &Node, count: &mut usize) -> Node {
 }
 
 fn eval_to_node(s: &str) -> Node {
-    let tokens = s
+    let tokens: Vec<Vec<u8>> = s
         .split_whitespace()
         .map(|s| s.bytes().collect_vec())
         .collect::<Vec<_>>();
@@ -522,23 +522,38 @@ fn test() {
     assert_eq!(eval("BT I$ S4%34"), Value::Str(b"tes".to_vec()));
     assert_eq!(eval("BD I$ S4%34"), Value::Str(b"t".to_vec()));
     assert_eq!(eval("? B> I# I$ S9%3 S./"), Value::Str(b"no".to_vec()));
-    assert_eq!(eval("B$ B$ L# L$ v# B. SB%,,/ S}Q/2,$_ IK"), Value::Str(b"Hello World!".to_vec()));
+    assert_eq!(
+        eval("B$ B$ L# L$ v# B. SB%,,/ S}Q/2,$_ IK"),
+        Value::Str(b"Hello World!".to_vec())
+    );
     assert_eq!(eval(r#"B$ L# B$ L" B+ v" v" B* I$ I# v8"#), eval("I-"));
 }
 
 #[test]
-fn test2(){
+fn test2() {
     // (\y. (\x. (\y. x + y)) y) 3 4
-    assert_eq!(eval("B$ B$ B$ Ly Lx Ly B+ vx vy vy I$ I%"), Value::Int(7.into()));
+    assert_eq!(
+        eval("B$ B$ B$ Ly Lx Ly B+ vx vy vy I$ I%"),
+        Value::Int(7.into())
+    );
 
     // (\x. x + x) 3
     assert_eq!(eval("B$ Lx B+ vx vx I$"), Value::Int(6.into()));
     // (\x. (\f. f (f (f x))) (\x. x + x)) 3
-    assert_eq!(eval("B$ Lx B$ Lf B$ vf B$ vf B$ vf vx Lx B+ vx vx I$"), Value::Int(24.into()));
+    assert_eq!(
+        eval("B$ Lx B$ Lf B$ vf B$ vf B$ vf vx Lx B+ vx vx I$"),
+        Value::Int(24.into())
+    );
     // (\y. (\x. (\f. f (f (f x))) (\x. x * y)) 3) 4
-    assert_eq!(eval("B$ Ly B$ Lx B$ Lf B$ vf B$ vf B$ vf vx Lx B* vx vy I$ I%"), Value::Int(192.into()));
+    assert_eq!(
+        eval("B$ Ly B$ Lx B$ Lf B$ vf B$ vf B$ vf vx Lx B* vx vy I$ I%"),
+        Value::Int(192.into())
+    );
     // (\x. (\y. (\f. f (f (f x))) (\x. x * y)) 4) 3
-    assert_eq!(eval("B$ Lx B$ Ly B$ Lf B$ vf B$ vf B$ vf vx Lx B* vx vy I% I$"), Value::Int(192.into()));
+    assert_eq!(
+        eval("B$ Lx B$ Ly B$ Lf B$ vf B$ vf B$ vf vx Lx B* vx vy I% I$"),
+        Value::Int(192.into())
+    );
 
     // 5! == 120
     // f(x) := If x > 0 then x * f(x - 1) else 1
