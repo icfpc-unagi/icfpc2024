@@ -462,13 +462,17 @@ fn rec(root: &Node, count: &mut usize) -> Node {
                 // call by value
                 let lambda = rec(v1, count);
                 if let Node::Lambda { var, exp } = lambda {
+                    // dbg!(&v2);
                     let b = rec(v2, count);
+                    // dbg!(&b);
                     *count += 1;
                     if *count > 10_000_000 {
                         panic!("beta reductions limit exceeded");
                     }
+                    // dbg!(&exp, &var);
                     let v = subst(&exp, &var, Rc::new(b), 0);
-                    (*v).clone()
+                    // dbg!(v.clone());
+                    rec(v.as_ref(), count)
                 } else {
                     panic!("apply of non-lambda");
                 }
