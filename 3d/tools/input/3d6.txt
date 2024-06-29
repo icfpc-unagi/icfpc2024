@@ -1,0 +1,11 @@
+# Input
+  `2 <= A <= 500`
+
+# Output
+  `1` if `A` is a prime number, and `0` otherwise.
+
+# Example
+  * `A = 5`
+    `Answer = 1`
+  * `A = 4`
+    `Answer = 0`
