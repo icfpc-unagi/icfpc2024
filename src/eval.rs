@@ -630,4 +630,18 @@ fn test_reduction() {
         eval_to_node("B$ Lf Lx Ly B$ B$ vf vx vy La Lb B- B+ va vb vz"),
         eval_to_node("Lx Ly B$ B$ La Lb B- B+ va vb vz vx vy")
     );
+
+    // (1-origin)
+    // (λ λ 4 2 (λ 1 3)) (λ 5 1)
+    // (λx. λy. z x (λu. u x)) (λx. w x)
+    // -> λ 3 (λ 6 1) (λ 1 (λ 7 1))
+    // λy. z (λx. w x) (λu. u (λx. w x))
+    let m = "Lx Ly B$ B$ vz vx Lu B$ vu vx";
+    let n = "Lx B$ vw vx";
+    let reduced = eval_to_node(&format!("B$ B$ B$ B$ Lw Lp Lz Lq B$ {m} {n} Sw Sp Sz Sq"));
+    let expected = eval_to_node("Ly B$ B$ Sz Lx B$ Sw vx Lu B$ vu Lx B$ Sw vx");
+    eprintln!("{}", reduced);
+    eprintln!("{}", expected);
+    dbg!(&reduced, &expected);
+    assert_eq!(reduced, expected);
 }
