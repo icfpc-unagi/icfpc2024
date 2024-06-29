@@ -14,12 +14,14 @@ struct Cli {
 fn main() {
     let cli = Cli::parse();
     {
-        let input_file = std::fs::File::open(&cli.input).expect(&format!("No such input: {}", cli.input));
-        let output_file = std::fs::File::create(&cli.output).expect(&format!("Cannot create {}", cli.output));
+        let input_file =
+            std::fs::File::open(&cli.input).expect(&format!("No such input: {}", cli.input));
+        let output_file =
+            std::fs::File::create(&cli.output).expect(&format!("Cannot create {}", cli.output));
         let stime = std::time::SystemTime::now();
         let status = std::process::Command::new("sh")
             .arg("-c")
-            .arg(format!("ulimit -Sv 4000000; timeout --foreground 60s {}", cli.cmd)) // for standard problem
+            .arg(format!("ulimit -Sv 8000000; {}", cli.cmd)) // for standard problem
             // .arg(format!("ulimit -Sv 4000000; timeout --foreground 60s ../tools/target/release/tester {}", cli.cmd)) // for interactive problem
             .stdin(std::process::Stdio::from(input_file))
             .stdout(std::process::Stdio::from(output_file))
