@@ -111,7 +111,28 @@ fn gen(problem_id: i64, x0: i64, a: i64, c: i64, m: i64, xt: i64, step: i32) -> 
         "##
             );
         } else {
-            panic!()
+            return format!(
+                r##"
+        B.
+            "solve lambdaman{problem_id} "
+            B$
+                B$
+                    Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
+                    Lf Lx
+                    ?
+                        B= vx {xt}
+                        ""
+                        B.
+                            BT 2 BD B% B* vx 2 8 "RRDDLLUU"
+                            B$ vf
+                                B%
+                                    B*
+                                        vx
+                                        {a}
+                                    {m}
+            {x0}
+        "##
+            );
         }
     } else {
         panic!()
@@ -414,7 +435,7 @@ struct Args {
     modulo: usize,
 
     #[arg(long)]
-    use_c: bool,
+    disable_c: bool,
 }
 
 fn main() {
@@ -431,7 +452,8 @@ fn main() {
     let args = Args::parse();
     dbg!(&args);
 
-    solve(args.problem, args.step, args.modulo, args.use_c);
+    let use_c = !args.disable_c;
+    solve(args.problem, args.step, args.modulo, use_c);
 }
 
 fn solve(i: usize, step: usize, first_mod: usize, use_c: bool) {
