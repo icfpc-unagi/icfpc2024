@@ -89,9 +89,19 @@ fn solve2(input: &Input, step: i32, first_mod: usize) -> i32 {
             let result = solve3(ii, start_id, d, step as usize, &next, modulo);
 
             // もしsolve(i)が0ならば即終了
-            if result == 0 {
+            if result.0 == 0 {
+                let last_turn = result.1;
+                let a = ii / 93 / 93 + 1;
+                let b = ii / 93 % 93 + 1;
+                let c = ii % 93 + 1;
+                let last = getLastA(a, b, c, step as usize, modulo, last_turn);
+                if last[3] == !0 {
+                    eprintln!("endpoint is not found");
+                    return;
+                }
+
                 let mut best = best_result.lock().unwrap();
-                *best = (result, ii);
+                *best = (result.0, ii);
                 println!("found!");
                 return;
             }
@@ -100,8 +110,8 @@ fn solve2(input: &Input, step: i32, first_mod: usize) -> i32 {
 
             // 最小値を更新
             let mut best = best_result.lock().unwrap();
-            if result < best.0 {
-                *best = (result, ii);
+            if result.0 < best.0 {
+                *best = (result.0, ii);
 
                 println!("  NowBest: {} at i: {} {}", best.0, best.1, challenge);
             }
@@ -136,7 +146,7 @@ fn solve2(input: &Input, step: i32, first_mod: usize) -> i32 {
         println!("b : {}", b);
         println!("c : {}", c);
         println!("mod : {}", modulo);
-        let last = getLastA(a, b, c, step as usize, modulo);
+        let last = getLastA(a, b, c, step as usize, modulo, 1);
         println!("last : {} {} {} {}", last[0], last[1], last[2], last[3]);
         /*
         for p in 0..prime.len() {
@@ -162,7 +172,7 @@ fn solve3(
     step: usize,
     next: &Vec<Vec<usize>>,
     modulo: usize,
-) -> usize {
+) -> (usize, usize) {
     //let prime = vec![1, 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31];
     let mut visited = vec![false; d];
     let mut loopflag = vec![false; d];
@@ -189,7 +199,7 @@ fn solve3(
     let b = bit / 93 % 93 + 1;
     let mut a = bit / 93 / 93 % 93 + 1;
     if a <= 1 {
-        return remain_pos;
+        return (remain_pos, 0);
     }
 
     for turn in 0..limit_turn {
@@ -232,12 +242,12 @@ fn solve3(
                         }
                     }
                     */
-                    return 0;
+                    return (0, turn);
                 }
             }
         }
     }
-    return remain_pos;
+    return (remain_pos, 0);
 }
 
 fn main() {
@@ -317,14 +327,21 @@ fn request(input: &str) -> anyhow::Result<String> {
     }
 }
 
-fn getLastA(a: usize, b: usize, c: usize, step: usize, modulo: usize) -> Vec<usize> {
+fn getLastA(
+    a: usize,
+    b: usize,
+    c: usize,
+    step: usize,
+    modulo: usize,
+    end_turn: usize,
+) -> Vec<usize> {
     let mut visited = vec![false; modulo];
 
     let mut ans = vec![!0; 4];
     let max_turn = 999998 / step;
     let mut a2 = a;
     for i in 0..max_turn {
-        if !visited[a2] {
+        if !visited[a2] && i >= end_turn {
             if a2 < 94 {
                 ans[0] = a2;
             }
