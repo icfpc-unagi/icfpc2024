@@ -155,7 +155,7 @@ fn solve2(problem_id: usize, input: &Input, step: i32, first_mod: usize, use_c: 
                 return;
             }
             // let ii = ((i as u64 * 123456711) % (93 * 93 * 93)) as usize;
-            let ii = *i as usize;
+            let ii = i as usize;
             let a = ii / 93 / 93 + 1;
             let b = ii / 93 % 93 + 1;
             let c = if use_c { ii % 93 + 1 } else { 0 };
