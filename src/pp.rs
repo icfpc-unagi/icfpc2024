@@ -50,7 +50,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_preprocess() {
+    fn test_preprocess() -> anyhow::Result<()> {
+        assert_eq!(preprocess("1_000")?, "I+]");
+        assert_eq!(preprocess(r#"a  "x y  z"  b"#)?, "a S8}9}}: b");
         assert_eq!(
             preprocess(
                 r#"
@@ -60,12 +62,12 @@ mod tests {
                       BT 1 BD vs "URDL"
                       B% vp 4
                 "#
-            )
-            .unwrap(),
-            "Lf Lp Ls ? B= vp I! BT I\" BD vs SOL>F B% vp I%".to_string(),
+            )?,
+            "Lf Lp Ls ? B= vp I! BT I\" BD vs SOL>F B% vp I%",
         );
-        assert!(preprocess(
-            r#"
+        assert_eq!(
+            preprocess(
+                r#"
           B$ Ly
           B$
               B$ vY Lf Lt
@@ -90,7 +92,9 @@ mod tests {
               0
           Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
           "#,
-        )
-        .is_ok());
+            )?,
+            "B$ Ly B$ B$ vY Lf Lt ? B= vt I\"41< S3/,6%},!-\"$!-!.RR} B. B$ vf B+ vt I\" BT I# BD B* I# B$ B$ vY Lf Lp ? B= vp I! I! B+ B* B/ vt B% vp I~ B/ vp I~ B$ vf B/ vp I${ I#hG44#!\"T+~/af SOOLL>>FF I! Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx",
+        );
+        Ok(())
     }
 }
