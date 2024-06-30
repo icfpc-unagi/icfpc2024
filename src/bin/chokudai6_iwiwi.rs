@@ -32,7 +32,59 @@ type Board = Vec<Vec<char>>;
 const DIJ: [(usize, usize); 4] = [(0, 1), (1, 0), (0, !0), (!0, 0)];
 const DIR: [char; 4] = ['R', 'D', 'L', 'U'];
 
-fn solve2(input: &Input, step: i32, first_mod: usize, use_c: bool) -> i32 {
+fn gen1(problem_id: i64, x0: i64, a: i64, c: i64, m: i64, xt: i64) -> String {
+    if c != 0 {
+        return format!(
+            r##"
+    B.
+        "solve lambdaman{problem_id} "
+        B$
+            B$
+                Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
+                Lf Lx
+                ?
+                    B= vx {xt}
+                    ""
+                    B.
+                        BT 1 BD B% vx 4 "RDLU"
+                        B$ vf
+                            B%
+                                B+
+                                    B*
+                                        vx
+                                        {a}
+                                    {c}
+                                {m}
+        {x0}
+    "##
+        );
+    } else {
+        return format!(
+            r##"
+    B.
+        "solve lambdaman{problem_id} "
+        B$
+            B$
+                Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
+                Lf Lx
+                ?
+                    B= vx {xt}
+                    ""
+                    B.
+                        BT 1 BD B% vx 4 "RDLU"
+                        B$ vf
+                            B%
+                                B*
+                                    vx
+                                    {a}
+                                {m}
+        {x0}
+    "##
+        );
+    }
+}
+
+fn solve2(problem_id: usize, input: &Input, step: i32, first_mod: usize, use_c: bool) -> i32 {
     let n = input.board.len();
     let m = input.board[0].len();
     let mut id = vec![!0; n * m];
@@ -84,9 +136,19 @@ fn solve2(input: &Input, step: i32, first_mod: usize, use_c: bool) -> i32 {
 
         //let range = 0..(93 * 93 * 93);
 
-        let mut range: Vec<u64> = (0..(93 * 93 * 93)).collect();
+        let mut range: Vec<u64>;
+        if use_c {
+            range = (0..(93 * 93 * 93)).collect();
+        } else {
+            range = vec![];
+            for a in 0..93 {
+                for b in 0..93 {
+                    range.push((a * 93 + b) * 93);
+                }
+            }
+        }
         range.shuffle(&mut rng);
-        let range: Vec<_> = range.iter().take(10000).collect();
+        // let range: Vec<_> = range.iter().take(1000).collect();
 
         range.into_par_iter().for_each(|i| {
             if best_result.lock().unwrap().0 == 0 {
@@ -98,19 +160,45 @@ fn solve2(input: &Input, step: i32, first_mod: usize, use_c: bool) -> i32 {
             let b = ii / 93 % 93 + 1;
             let c = if use_c { ii % 93 + 1 } else { 0 };
 
-            let result = solve3(a, b, c, start_id, d, step as usize, &next, modulo);
+            let (remain_pos, last_turn) =
+                solve3(a, b, c, start_id, d, step as usize, &next, modulo);
 
-            // もしsolve(i)が0ならば即終了
-            if result.0 == 0 {
-                let last_turn = result.1;
+            // もしsolve(i)が0ならば即終了 → そう甘くない！lastの0が0になるまで終了しない
+            if remain_pos == 0 {
                 let last = getLastA(a, b, c, step as usize, modulo, last_turn);
-                if last[3] == !0 {
+
+                for i in 0..last.len() {
+                    if last[i] == !0 {
+                        continue;
+                    }
+                    let program = gen1(
+                        problem_id as i64,
+                        a as i64,
+                        b as i64,
+                        c as i64,
+                        modulo as i64,
+                        last[i] as i64,
+                    );
+                    eprintln!("--------------------------------------------------------------------------------");
+                    println!("a : {}", a);
+                    println!("b : {}", b);
+                    println!("c : {}", c);
+                    println!("mod : {}", modulo);
+                    println!("last : {}", last[i]);
+
+                    eprintln!("Program:\n{}", program);
+                    let compiled = icfpc2024::pp::preprocess(&program).unwrap();
+                    eprintln!("Compiled:\n{}\n(length={})", compiled, compiled.len());
+                    break;
+                }
+
+                if last[0] == !0 {
                     eprintln!("endpoint is not found");
                     return;
                 }
 
                 let mut best = best_result.lock().unwrap();
-                *best = (result.0, a, b, c);
+                *best = (remain_pos, a, b, c);
                 println!("found!");
                 return;
             }
@@ -119,8 +207,8 @@ fn solve2(input: &Input, step: i32, first_mod: usize, use_c: bool) -> i32 {
 
             // 最小値を更新
             let mut best = best_result.lock().unwrap();
-            if result.0 < best.0 {
-                *best = (result.0, a, b, c);
+            if remain_pos < best.0 {
+                *best = (remain_pos, a, b, c);
 
                 println!("  NowBest: {} at i: {} {}", best.0, best.1, challenge);
             }
@@ -166,6 +254,23 @@ fn solve2(input: &Input, step: i32, first_mod: usize, use_c: bool) -> i32 {
             }
         }
         */
+
+        /*
+        for last in last {
+            let program = gen1(
+                problem_id as i64,
+                a as i64,
+                b as i64,
+                c as i64,
+                modulo as i64,
+                last as i64,
+            );
+            eprintln!("{}", program);
+            let compiled = icfpc2024::pp::preprocess(&program).unwrap();
+            eprintln!("{}", compiled);
+        }
+        */
+
         return 1;
     } else {
         println!("NG {} at i: {}", best_result.0, best_result.1);
@@ -269,7 +374,7 @@ fn main() {
         1000003
     };
 
-    solve(id, step, modulo, false);
+    solve(id, step, modulo, true);
 }
 
 fn solve(i: usize, step: usize, first_mod: usize, use_c: bool) {
@@ -278,7 +383,7 @@ fn solve(i: usize, step: usize, first_mod: usize, use_c: bool) {
     _ = get_time(true);
 
     eprintln!("Test case {}", i);
-    let moves = solve2(&input, step as i32, first_mod, use_c);
+    let moves = solve2(i, &input, step as i32, first_mod, use_c);
 }
 
 fn decode(c: char) -> char {
