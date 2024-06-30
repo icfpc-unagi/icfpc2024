@@ -46,7 +46,6 @@ macro_rules! mat {
 }
 
 pub mod eval;
-pub mod eval2;
 
 const CHARS: &[u8; 94] = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!\"#$%&'()*+,-./:;<=>?@[\\]^_`|~ \n";
 
