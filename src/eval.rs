@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
-use itertools::Itertools;
 use num::bigint::BigInt;
+use std::result::Result::Ok;
 use std::{cell::RefCell, rc::Rc};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -10,26 +10,35 @@ pub enum Node {
     Var(BigInt, Option<usize>), // name, de bruijn index
     Unary {
         op: u8,
-        v: Rc<Node>,
+        v: Rc<NodePos>,
     },
     Binary {
         op: u8,
-        v1: Rc<Node>,
-        v2: Rc<Node>,
+        v1: Rc<NodePos>,
+        v2: Rc<NodePos>,
     },
     If {
-        cond: Rc<Node>,
-        v1: Rc<Node>,
-        v2: Rc<Node>,
+        cond: Rc<NodePos>,
+        v1: Rc<NodePos>,
+        v2: Rc<NodePos>,
     },
     Lambda {
         var: BigInt,
-        exp: Rc<Node>,
+        exp: Rc<NodePos>,
     },
-    Thunk(Rc<RefCell<Node>>),
+    Thunk(Rc<RefCell<NodePos>>),
 }
 
-fn thunk(v: Node) -> Node {
+#[derive(Clone, Debug)]
+pub struct NodePos(pub Node, pub usize);
+
+impl PartialEq for NodePos {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+fn thunk(v: NodePos) -> Node {
     Node::Thunk(Rc::new(RefCell::new(v)))
 }
 
@@ -66,89 +75,154 @@ impl std::fmt::Display for Node {
     }
 }
 
+impl std::fmt::Display for NodePos {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if f.alternate() {
+            write!(f, "{}:{}", self.0, self.1)
+        } else {
+            write!(f, "{}", self.0)
+        }
+    }
+}
+
 pub fn debug_parse(s: &str) -> () {
-    let tokens = s
-        .split_whitespace()
-        .map(|s| s.bytes().collect_vec())
-        .collect::<Vec<_>>();
+    let tokens = tokenize(s);
     let mut p = 0;
     let mut binders = vec![];
     let res = parse(&tokens, &mut p, &mut binders);
     assert_eq!(p, tokens.len());
-    eprintln!("{}", res);
+    match res {
+        Ok(node) => eprintln!("{}", node),
+        Err(e) => eprintln!("Error: {}", e),
+    };
 }
 
-pub fn parse(tokens: &[Vec<u8>], p: &mut usize, binders: &mut Vec<BigInt>) -> Node {
-    let id = tokens[*p][0];
-    let body = &tokens[*p][1..];
+pub fn parse(
+    tokens: &[(usize, Vec<u8>)],
+    p: &mut usize,
+    binders: &mut Vec<BigInt>,
+) -> anyhow::Result<NodePos> {
+    let id = tokens[*p].1[0];
+    let body = &tokens[*p].1[1..];
     *p += 1;
     match id {
-        b'T' => {
-            assert_eq!(body.len(), 0);
-            Node::Const(Value::Bool(true))
-        }
-        b'F' => {
-            assert_eq!(body.len(), 0);
-            Node::Const(Value::Bool(false))
-        }
+        b'T' => match body.len() {
+            0 => Ok(NodePos(Node::Const(Value::Bool(true)), tokens[*p - 1].0)),
+            v => anyhow::bail!(
+                "Token at {}: T needs no argument, but: {}",
+                tokens[*p - 1].0,
+                body.iter().map(|&b| b as char).collect::<String>()
+            ),
+        },
+        b'F' => match body.len() {
+            0 => Ok(NodePos(Node::Const(Value::Bool(false)), tokens[*p - 1].0)),
+            v => anyhow::bail!(
+                "Token at {}: F needs no argument, but: {}",
+                tokens[*p - 1].0,
+                body.iter().map(|&b| b as char).collect::<String>()
+            ),
+        },
         b'I' => {
             let mut val = BigInt::from(0);
-            for &b in body {
-                val *= 94;
-                val += b - 33;
+            for (i, &b) in body.iter().enumerate() {
+                match b {
+                    b'!'..=b'~' => val = val * 94 + (b - 33),
+                    _ => anyhow::bail!(
+                        "Token at {}: invalid character in integer at {}",
+                        tokens[*p - 1].0,
+                        i
+                    ),
+                }
             }
-            Node::Const(Value::Int(val))
+            Ok(NodePos(Node::Const(Value::Int(val)), tokens[*p - 1].0))
         }
-        b'S' => Node::Const(S(body)),
-        b'U' => {
-            assert_eq!(body.len(), 1);
-            Node::Unary {
-                op: body[0],
-                v: Rc::new(parse(tokens, p, binders)),
-            }
-        }
-        b'B' => {
-            assert_eq!(body.len(), 1);
-            Node::Binary {
-                op: body[0],
-                v1: Rc::new(parse(tokens, p, binders)),
-                v2: Rc::new(parse(tokens, p, binders)),
-            }
-        }
-        b'?' => {
-            assert_eq!(body.len(), 0);
-            Node::If {
-                cond: Rc::new(parse(tokens, p, binders)),
-                v1: Rc::new(parse(tokens, p, binders)),
-                v2: Rc::new(parse(tokens, p, binders)),
-            }
-        }
+        b'S' => Ok(NodePos(Node::Const(S(body)), tokens[*p - 1].0)),
+        b'U' => match body.len() {
+            1 => Ok(NodePos(
+                Node::Unary {
+                    op: body[0],
+                    v: Rc::new(parse(tokens, p, binders)?),
+                },
+                tokens[*p - 1].0,
+            )),
+            _ => anyhow::bail!(
+                "Token at {}: U takes exactly one argument, but: {}",
+                tokens[*p - 1].0,
+                body.iter().map(|&b| b as char).collect::<String>()
+            ),
+        },
+        b'B' => match body.len() {
+            1 => Ok(NodePos(
+                Node::Binary {
+                    op: body[0],
+                    v1: Rc::new(parse(tokens, p, binders)?),
+                    v2: Rc::new(parse(tokens, p, binders)?),
+                },
+                tokens[*p - 1].0,
+            )),
+            _ => anyhow::bail!(
+                "Token at {}: B takes exactly two arguments, but: {}",
+                tokens[*p - 1].0,
+                body.iter().map(|&b| b as char).collect::<String>()
+            ),
+        },
+        b'?' => match body.len() {
+            0 => Ok(NodePos(
+                Node::If {
+                    cond: Rc::new(parse(tokens, p, binders)?),
+                    v1: Rc::new(parse(tokens, p, binders)?),
+                    v2: Rc::new(parse(tokens, p, binders)?),
+                },
+                tokens[*p - 1].0,
+            )),
+            _ => anyhow::bail!(
+                "Token at {}: ? takes no arguments, but: {}",
+                tokens[*p - 1].0,
+                body.iter().map(|&b| b as char).collect::<String>()
+            ),
+        },
         b'L' => {
             let mut var = BigInt::from(0);
-            for &b in body {
-                var *= 94;
-                var += b - 33;
+            for (i, &b) in body.iter().enumerate() {
+                match b {
+                    b'!'..=b'~' => var = var * 94 + (b - 33),
+                    _ => anyhow::bail!(
+                        "Token at {}: invalid character '{}' in lambda argument at {}",
+                        tokens[*p - 1].0,
+                        b as char,
+                        i
+                    ),
+                }
             }
             binders.push(var.clone());
             let res = Node::Lambda {
                 var,
-                exp: Rc::new(parse(tokens, p, binders)),
+                exp: Rc::new(parse(tokens, p, binders)?),
             };
             binders.pop();
-            res
+            Ok(NodePos(res, tokens[*p - 1].0))
         }
         b'v' => {
             let mut var = BigInt::from(0);
-            for &b in body {
-                var *= 94;
-                var += b - 33;
+            for (i, &b) in body.iter().enumerate() {
+                match b {
+                    b'!'..=b'~' => var = var * 94 + (b - 33),
+                    _ => anyhow::bail!(
+                        "Token at {}: invalid character '{}' in variable at {}",
+                        tokens[*p - 1].0,
+                        b as char,
+                        i
+                    ),
+                }
             }
             let de_bruijn_index = binders.iter().rev().position(|b| b == &var);
-            Node::Var(var, de_bruijn_index)
+            Ok(NodePos(Node::Var(var, de_bruijn_index), tokens[*p - 1].0))
         }
-        id => {
-            panic!("unknown id: {}", id as char);
-        }
+        id => anyhow::bail!(
+            "Token at {}: unknown token: {}",
+            tokens[*p - 1].0,
+            id as char
+        ),
     }
 }
 
@@ -200,100 +274,123 @@ fn S(body: &[u8]) -> Value {
     Value::Str(body.iter().map(|&b| CHARS[b as usize - 33]).collect())
 }
 
-fn subst(root: &Node, var: &BigInt, val: Rc<Node>, level: usize) -> Rc<Node> {
-    match root {
-        Node::Const(val) => Rc::new(Node::Const(val.clone())),
-        Node::Unary { op, v } => Rc::new(Node::Unary {
-            op: *op,
-            v: subst(v, var, val, level),
-        }),
-        Node::Binary { op, v1, v2 } => Rc::new(Node::Binary {
-            op: *op,
-            v1: subst(v1, var, val.clone(), level),
-            v2: subst(v2, var, val, level),
-        }),
-        Node::If { cond, v1, v2 } => Rc::new(Node::If {
-            cond: subst(cond, var, val.clone(), level),
-            v1: subst(v1, var, val.clone(), level),
-            v2: subst(v2, var, val, level),
-        }),
-        Node::Lambda { var: var2, exp } => Rc::new(Node::Lambda {
-            var: var2.clone(),
-            // TODO: cache shifted val
-            exp: subst(exp, var, shift(val, level), level + 1),
-        }),
+fn subst(root: &NodePos, var: &BigInt, val: Rc<NodePos>, level: usize) -> Rc<NodePos> {
+    let pos = root.1;
+    match &root.0 {
+        Node::Const(val) => Rc::new(NodePos(Node::Const(val.clone()), pos)),
+        Node::Unary { op, v } => Rc::new(NodePos(
+            Node::Unary {
+                op: *op,
+                v: subst(v, var, val, level),
+            },
+            pos,
+        )),
+        Node::Binary { op, v1, v2 } => Rc::new(NodePos(
+            Node::Binary {
+                op: *op,
+                v1: subst(v1, var, val.clone(), level),
+                v2: subst(v2, var, val, level),
+            },
+            pos,
+        )),
+        Node::If { cond, v1, v2 } => Rc::new(NodePos(
+            Node::If {
+                cond: subst(cond, var, val.clone(), level),
+                v1: subst(v1, var, val.clone(), level),
+                v2: subst(v2, var, val, level),
+            },
+            pos,
+        )),
+        Node::Lambda { var: var2, exp } => Rc::new(NodePos(
+            Node::Lambda {
+                var: var2.clone(),
+                exp: subst(exp, var, shift(val, level), level + 1),
+            },
+            pos,
+        )),
         Node::Var(var2, index) => {
             if index == &Some(level) {
                 val.clone()
             } else {
-                Rc::new(Node::Var(var2.clone(), *index))
+                Rc::new(NodePos(Node::Var(var2.clone(), *index), pos))
             }
-        },
+        }
         Node::Thunk(_) => panic!("unevaluated thunk"),
     }
 }
 
-fn shift(root: Rc<Node>, level: usize) -> Rc<Node> {
-    match root.as_ref() {
+fn shift(root: Rc<NodePos>, level: usize) -> Rc<NodePos> {
+    let pos = root.1;
+    match &root.0 {
         Node::Thunk(_) => todo!(),
-        Node::Const(val) => Rc::new(Node::Const(val.clone())),
-        Node::Unary { op, v } => Rc::new(Node::Unary {
-            op: *op,
-            v: shift(v.clone(), level),
-        }),
-        Node::Binary { op, v1, v2 } => Rc::new(Node::Binary {
-            op: *op,
-            v1: shift(v1.clone(), level),
-            v2: shift(v2.clone(), level),
-        }),
-        Node::If { cond, v1, v2 } => Rc::new(Node::If {
-            cond: shift(cond.clone(), level),
-            v1: shift(v1.clone(), level),
-            v2: shift(v2.clone(), level),
-        }),
-        Node::Lambda { var, exp } => Rc::new(Node::Lambda {
-            var: var.clone(),
-            exp: shift(exp.clone(), level + 1),
+        Node::Const(val) => Rc::new(NodePos(Node::Const(val.clone()), pos)),
+        Node::Unary { op, v } => Rc::new(NodePos(
+            Node::Unary {
+                op: *op,
+                v: shift(v.clone(), level),
+            },
+            pos,
+        )),
+        Node::Binary { op, v1, v2 } => Rc::new(NodePos(
+            Node::Binary {
+                op: *op,
+                v1: shift(v1.clone(), level),
+                v2: shift(v2.clone(), level),
+            },
+            pos,
+        )),
+        Node::If { cond, v1, v2 } => Rc::new(NodePos(
+            Node::If {
+                cond: shift(cond.clone(), level),
+                v1: shift(v1.clone(), level),
+                v2: shift(v2.clone(), level),
+            },
+            pos,
+        )),
+        Node::Lambda { var, exp } => Rc::new(NodePos {
+            0: Node::Lambda {
+                var: var.clone(),
+                exp: shift(exp.clone(), level + 1),
+            },
+            1: pos,
         }),
         Node::Var(var, index) => {
             let index = index.map(|i| if i >= level { i + 1 } else { i });
-            Rc::new(Node::Var(var.clone(), index))
+            Rc::new(NodePos(Node::Var(var.clone(), index), pos))
         }
     }
 }
 
-fn rec(root: &Node, count: &mut usize) -> Node {
-    match root {
-        Node::Const(val) => Node::Const(val.clone()),
+fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
+    let pos = root.1;
+    match &root.0 {
+        Node::Const(val) => Ok(NodePos(Node::Const(val.clone()), pos)),
         Node::Unary { op, v } => match op {
-            b'-' => {
-                if let Node::Const(Value::Int(val)) = rec(v, count) {
-                    Node::Const(Value::Int(-val))
-                } else {
-                    panic!("negation of non-int");
+            b'-' => match rec(&v, count)? {
+                NodePos(Node::Const(Value::Int(val)), _) => {
+                    Ok(NodePos(Node::Const(Value::Int(-val)), pos))
                 }
-            }
-            b'!' => {
-                if let Node::Const(Value::Bool(val)) = rec(v, count) {
-                    Node::Const(Value::Bool(!val))
-                } else {
-                    panic!("negation of non-bool");
+                _ => panic!("negation of non-int"),
+            },
+            b'!' => match rec(&v, count)? {
+                NodePos(Node::Const(Value::Bool(val)), _) => {
+                    Ok(NodePos(Node::Const(Value::Bool(!val)), pos))
                 }
-            }
-            b'#' => {
-                if let Node::Const(Value::Str(val)) = rec(v, count) {
+                _ => panic!("negation of non-bool"),
+            },
+            b'#' => match rec(&v, count)? {
+                NodePos(Node::Const(Value::Str(val)), _) => {
                     let mut v = BigInt::from(0);
                     for b in val {
                         v *= 94;
                         v += CHARS.iter().position(|&c| c == b).unwrap();
                     }
-                    Node::Const(Value::Int(v))
-                } else {
-                    panic!("length of non-str");
+                    Ok(NodePos(Node::Const(Value::Int(v)), pos))
                 }
-            }
-            b'$' => {
-                if let Node::Const(Value::Int(mut val)) = rec(v, count) {
+                _ => panic!("length of non-str"),
+            },
+            b'$' => match rec(&v, count)? {
+                NodePos(Node::Const(Value::Int(mut val)), _) => {
                     let mut s = vec![];
                     while val > 0.into() {
                         let v: u8 = (val.clone() % BigInt::from(94)).try_into().unwrap();
@@ -301,223 +398,242 @@ fn rec(root: &Node, count: &mut usize) -> Node {
                         val /= 94;
                     }
                     s.reverse();
-                    Node::Const(S(&s))
-                } else {
-                    panic!("stringify of non-int");
+                    Ok(NodePos(Node::Const(S(&s)), pos))
+                }
+                _ => panic!("stringify of non-int"),
+            },
+            op => {
+                panic!("unknown op: {}", *op as char);
+            }
+        },
+        Node::Binary { op, v1, v2 } => match op {
+            b'+' => {
+                let a = rec(&v1, count)?;
+                let b = rec(&v2, count)?;
+                match (a, b) {
+                    (
+                        NodePos(Node::Const(Value::Int(a)), _),
+                        NodePos(Node::Const(Value::Int(b)), _),
+                    ) => Ok(NodePos(Node::Const(Value::Int(a + b)), pos)),
+                    _ => panic!("addition of non-int"),
+                }
+            }
+            b'-' => {
+                let a = rec(&v1, count)?;
+                let b = rec(&v2, count)?;
+                match (a, b) {
+                    (
+                        NodePos(Node::Const(Value::Int(a)), _),
+                        NodePos(Node::Const(Value::Int(b)), _),
+                    ) => Ok(NodePos(Node::Const(Value::Int(a - b)), pos)),
+                    _ => panic!("subtraction of non-int"),
+                }
+            }
+            b'*' => {
+                let a = rec(&v1, count)?;
+                let b = rec(&v2, count)?;
+                match (a, b) {
+                    (
+                        NodePos(Node::Const(Value::Int(a)), _),
+                        NodePos(Node::Const(Value::Int(b)), _),
+                    ) => Ok(NodePos(Node::Const(Value::Int(a * b)), pos)),
+                    _ => panic!("multiplication of non-int"),
+                }
+            }
+            b'/' => {
+                let a = rec(&v1, count)?;
+                let b = rec(&v2, count)?;
+                match (a, b) {
+                    (
+                        NodePos(Node::Const(Value::Int(a)), _),
+                        NodePos(Node::Const(Value::Int(b)), _),
+                    ) => Ok(NodePos(Node::Const(Value::Int(a / b)), pos)),
+                    _ => panic!("division of non-int"),
+                }
+            }
+            b'%' => {
+                let a = rec(&v1, count)?;
+                let b = rec(&v2, count)?;
+                match (a, b) {
+                    (
+                        NodePos(Node::Const(Value::Int(a)), _),
+                        NodePos(Node::Const(Value::Int(b)), _),
+                    ) => Ok(NodePos(Node::Const(Value::Int(a % b)), pos)),
+                    _ => panic!("modulo of non-int"),
+                }
+            }
+            b'<' => {
+                let a = rec(&v1, count)?;
+                let b = rec(&v2, count)?;
+                match (a, b) {
+                    (
+                        NodePos(Node::Const(Value::Int(a)), _),
+                        NodePos(Node::Const(Value::Int(b)), _),
+                    ) => Ok(NodePos(Node::Const(Value::Bool(a < b)), pos)),
+                    _ => panic!("comparison of non-int"),
+                }
+            }
+            b'>' => {
+                let a = rec(&v1, count)?;
+                let b = rec(&v2, count)?;
+                match (a, b) {
+                    (
+                        NodePos(Node::Const(Value::Int(a)), _),
+                        NodePos(Node::Const(Value::Int(b)), _),
+                    ) => Ok(NodePos(Node::Const(Value::Bool(a > b)), pos)),
+                    _ => panic!("comparison of non-int"),
+                }
+            }
+            b'=' => {
+                let a = rec(&v1, count)?;
+                let b = rec(&v2, count)?;
+                match (a, b) {
+                    (
+                        NodePos(Node::Const(Value::Int(a)), _),
+                        NodePos(Node::Const(Value::Int(b)), _),
+                    ) => Ok(NodePos(Node::Const(Value::Bool(a == b)), pos)),
+                    (
+                        NodePos(Node::Const(Value::Bool(a)), _),
+                        NodePos(Node::Const(Value::Bool(b)), _),
+                    ) => Ok(NodePos(Node::Const(Value::Bool(a == b)), pos)),
+                    (
+                        NodePos(Node::Const(Value::Str(a)), _),
+                        NodePos(Node::Const(Value::Str(b)), _),
+                    ) => Ok(NodePos(Node::Const(Value::Bool(a == b)), pos)),
+                    _ => panic!("comparison of different types"),
+                }
+            }
+            b'|' => {
+                let a = rec(&v1, count)?;
+                let b = rec(&v2, count)?;
+                match (a, b) {
+                    (
+                        NodePos(Node::Const(Value::Bool(a)), _),
+                        NodePos(Node::Const(Value::Bool(b)), _),
+                    ) => Ok(NodePos(Node::Const(Value::Bool(a || b)), pos)),
+                    _ => panic!("or of non-bool"),
+                }
+            }
+            b'&' => {
+                let a = rec(&v1, count)?;
+                let b = rec(&v2, count)?;
+                match (a, b) {
+                    (
+                        NodePos(Node::Const(Value::Bool(a)), _),
+                        NodePos(Node::Const(Value::Bool(b)), _),
+                    ) => Ok(NodePos(Node::Const(Value::Bool(a && b)), pos)),
+                    _ => panic!("or of non-bool"),
+                }
+            }
+            b'.' => {
+                let a = rec(&v1, count)?;
+                let b = rec(&v2, count)?;
+                match (a, b) {
+                    (
+                        NodePos(Node::Const(Value::Str(mut a)), _),
+                        NodePos(Node::Const(Value::Str(b)), _),
+                    ) => {
+                        a.extend_from_slice(&b);
+                        Ok(NodePos(Node::Const(Value::Str(a)), pos))
+                    }
+                    _ => panic!("concat of non-str"),
+                }
+            }
+            b'T' => {
+                let a = rec(&v1, count)?;
+                let b = rec(&v2, count)?;
+                match (a, b) {
+                    (
+                        NodePos(Node::Const(Value::Int(a)), _),
+                        NodePos(Node::Const(Value::Str(b)), _),
+                    ) => {
+                        let a: usize = a.try_into().unwrap();
+                        Ok(NodePos(Node::Const(Value::Str(b[..a].to_vec())), pos))
+                    }
+                    _ => panic!("take of non-int or non-str"),
+                }
+            }
+            b'D' => {
+                let a = rec(&v1, count)?;
+                let b = rec(&v2, count)?;
+                match (a, b) {
+                    (
+                        NodePos(Node::Const(Value::Int(a)), _),
+                        NodePos(Node::Const(Value::Str(b)), _),
+                    ) => {
+                        let a: usize = a.try_into().unwrap();
+                        Ok(NodePos(Node::Const(Value::Str(b[a..].to_vec())), pos))
+                    }
+                    _ => panic!("drop of non-int or non-str"),
+                }
+            }
+            b'$' => {
+                let lambda = rec(&v1, count)?;
+                match lambda {
+                    NodePos(Node::Lambda { var, exp }, _) => {
+                        *count += 1;
+                        if *count > 10_000_000 {
+                            panic!("beta reductions limit exceeded");
+                        }
+                        let v = subst(&exp, &var, v2.clone(), 0);
+                        rec(&v, count)
+                    }
+                    _ => panic!("apply of non-lambda"),
+                }
+            }
+            b'!' => {
+                // call by value
+                let lambda = rec(&v1, count)?;
+                match lambda {
+                    NodePos(Node::Lambda { var, exp }, _) => {
+                        let b = rec(&v2, count)?;
+                        *count += 1;
+                        if *count > 10_000_000 {
+                            panic!("beta reductions limit exceeded");
+                        }
+                        let v = subst(&exp, &var, Rc::new(b), 0);
+                        rec(&v, count)
+                    }
+                    _ => panic!("apply of non-lambda"),
+                }
+            }
+            b'~' => {
+                // call-by-need
+                let lambda = rec(&v1, count)?;
+                match lambda {
+                    NodePos(Node::Lambda { var, exp }, _) => {
+                        *count += 1;
+                        if *count > 10_000_000 {
+                            panic!("beta reductions limit exceeded");
+                        }
+                        let v2: NodePos = (**v2).clone();
+                        let v2 = NodePos(thunk(v2), pos);
+                        let v = subst(&exp, &var, Rc::new(v2), 0);
+                        rec(&v, count)
+                    }
+                    _ => panic!("apply of non-lambda"),
                 }
             }
             op => {
                 panic!("unknown op: {}", *op as char);
             }
         },
-        Node::Binary { op, v1, v2 } => match *op {
-            b'+' => {
-                let a = rec(v1, count);
-                let b = rec(v2, count);
-                match (a, b) {
-                    (Node::Const(Value::Int(a)), Node::Const(Value::Int(b))) => {
-                        Node::Const(Value::Int(a + b))
-                    }
-                    _ => panic!("addition of non-int"),
-                }
-            }
-            b'-' => {
-                let a = rec(v1, count);
-                let b = rec(v2, count);
-                match (a, b) {
-                    (Node::Const(Value::Int(a)), Node::Const(Value::Int(b))) => {
-                        Node::Const(Value::Int(a - b))
-                    }
-                    _ => panic!("subtraction of non-int"),
-                }
-            }
-            b'*' => {
-                let a = rec(v1, count);
-                let b = rec(v2, count);
-                match (a, b) {
-                    (Node::Const(Value::Int(a)), Node::Const(Value::Int(b))) => {
-                        Node::Const(Value::Int(a * b))
-                    }
-                    _ => panic!("multiplication of non-int"),
-                }
-            }
-            b'/' => {
-                let a = rec(v1, count);
-                let b = rec(v2, count);
-                match (a, b) {
-                    (Node::Const(Value::Int(a)), Node::Const(Value::Int(b))) => {
-                        Node::Const(Value::Int(a / b))
-                    }
-                    _ => panic!("division of non-int"),
-                }
-            }
-            b'%' => {
-                let a = rec(v1, count);
-                let b = rec(v2, count);
-                match (a, b) {
-                    (Node::Const(Value::Int(a)), Node::Const(Value::Int(b))) => {
-                        Node::Const(Value::Int(a % b))
-                    }
-                    _ => panic!("modulo of non-int"),
-                }
-            }
-            b'<' => {
-                let a = rec(v1, count);
-                let b = rec(v2, count);
-                match (a, b) {
-                    (Node::Const(Value::Int(a)), Node::Const(Value::Int(b))) => {
-                        Node::Const(Value::Bool(a < b))
-                    }
-                    _ => panic!("comparison of non-int"),
-                }
-            }
-            b'>' => {
-                let a = rec(v1, count);
-                let b = rec(v2, count);
-                match (a, b) {
-                    (Node::Const(Value::Int(a)), Node::Const(Value::Int(b))) => {
-                        Node::Const(Value::Bool(a > b))
-                    }
-                    _ => panic!("comparison of non-int"),
-                }
-            }
-            b'=' => {
-                let a = rec(v1, count);
-                let b = rec(v2, count);
-                match (a, b) {
-                    (Node::Const(Value::Int(a)), Node::Const(Value::Int(b))) => {
-                        Node::Const(Value::Bool(a == b))
-                    }
-                    (Node::Const(Value::Bool(a)), Node::Const(Value::Bool(b))) => {
-                        Node::Const(Value::Bool(a == b))
-                    }
-                    (Node::Const(Value::Str(a)), Node::Const(Value::Str(b))) => {
-                        Node::Const(Value::Bool(a == b))
-                    }
-                    _ => panic!("comparison of different types"),
-                }
-            }
-            b'|' => {
-                let a = rec(v1, count);
-                let b = rec(v2, count);
-                match (a, b) {
-                    (Node::Const(Value::Bool(a)), Node::Const(Value::Bool(b))) => {
-                        Node::Const(Value::Bool(a || b))
-                    }
-                    _ => panic!("or of non-bool"),
-                }
-            }
-            b'&' => {
-                let a = rec(v1, count);
-                let b = rec(v2, count);
-                match (a, b) {
-                    (Node::Const(Value::Bool(a)), Node::Const(Value::Bool(b))) => {
-                        Node::Const(Value::Bool(a && b))
-                    }
-                    _ => panic!("or of non-bool"),
-                }
-            }
-            b'.' => {
-                let a = rec(v1, count);
-                let b = rec(v2, count);
-                match (a, b) {
-                    (Node::Const(Value::Str(mut a)), Node::Const(Value::Str(b))) => {
-                        a.extend_from_slice(&b);
-                        Node::Const(Value::Str(a))
-                    }
-                    _ => panic!("concat of non-str"),
-                }
-            }
-            b'T' => {
-                let a = rec(v1, count);
-                let b = rec(v2, count);
-                match (a, b) {
-                    (Node::Const(Value::Int(a)), Node::Const(Value::Str(b))) => {
-                        let a: usize = a.try_into().unwrap();
-                        Node::Const(Value::Str(b[..a].to_vec()))
-                    }
-                    _ => panic!("take of non-int or non-str"),
-                }
-            }
-            b'D' => {
-                let a = rec(v1, count);
-                let b = rec(v2, count);
-                match (a, b) {
-                    (Node::Const(Value::Int(a)), Node::Const(Value::Str(b))) => {
-                        let a: usize = a.try_into().unwrap();
-                        Node::Const(Value::Str(b[a..].to_vec()))
-                    }
-                    _ => panic!("drop of non-int or non-str"),
-                }
-            }
-            b'$' => {
-                let lambda = rec(v1, count);
-                if let Node::Lambda { var, exp } = lambda {
-                    *count += 1;
-                    if *count > 10_000_000 {
-                        panic!("beta reductions limit exceeded");
-                    }
-                    // dbg!(&exp, &var, &v2);
-                    let v = subst(&exp, &var, v2.clone(), 0);
-                    // dbg!(&v);
-                    rec(&v, count)
-                } else {
-                    panic!("apply of non-lambda");
-                }
-            }
-            b'!' => {
-                // call by value
-                let lambda = rec(v1, count);
-                if let Node::Lambda { var, exp } = lambda {
-                    // dbg!(&v2);
-                    let b = rec(v2, count);
-                    // dbg!(&b);
-                    *count += 1;
-                    if *count > 10_000_000 {
-                        panic!("beta reductions limit exceeded");
-                    }
-                    // dbg!(&exp, &var);
-                    let v = subst(&exp, &var, Rc::new(b), 0);
-                    // dbg!(v.clone());
-                    rec(v.as_ref(), count)
-                } else {
-                    panic!("apply of non-lambda");
-                }
-            }
-            b'~' => {
-                // call-by-need
-                let lambda = rec(v1, count);
-                if let Node::Lambda { var, exp } = lambda {
-                    *count += 1;
-                    if *count > 10_000_000 {
-                        panic!("beta reductions limit exceeded");
-                    }
-                    let v2: Node = (**v2).clone();
-                    let v2 = thunk(v2);
-                    let v = subst(&exp, &var, Rc::new(v2), 0);
-                    rec(&v, count)
-                } else {
-                    panic!("apply of non-lambda");
-                }
-            }
-            op => {
-                panic!("unknown op: {}", op as char);
-            }
-        },
         Node::If { cond, v1, v2 } => {
-            let cond = rec(cond, count);
+            let cond = rec(&cond, count)?;
             match cond {
-                Node::Const(Value::Bool(true)) => rec(v1, count),
-                Node::Const(Value::Bool(false)) => rec(v2, count),
+                NodePos(Node::Const(Value::Bool(true)), _) => rec(&v1, count),
+                NodePos(Node::Const(Value::Bool(false)), _) => rec(&v2, count),
                 _ => panic!("condition is not bool"),
             }
         }
-        Node::Lambda { var, exp } => Node::Lambda {
-            var: var.clone(),
-            // do not evaluate exp here
-            exp: exp.clone(),
-        },
-        Node::Var(var, index) => Node::Var(var.clone(), *index),
+        Node::Lambda { var, exp } => Ok(NodePos(
+            Node::Lambda {
+                var: var.clone(),
+                exp: exp.clone(),
+            },
+            pos,
+        )),
+        Node::Var(var, index) => Ok(NodePos(Node::Var(var.clone(), *index), pos)),
         Node::Thunk(_v) => {
             // let v_inner = v.get_mut();
             todo!()
@@ -525,79 +641,115 @@ fn rec(root: &Node, count: &mut usize) -> Node {
     }
 }
 
-fn eval_to_node(s: &str) -> Node {
-    let tokens: Vec<Vec<u8>> = s
-        .split_whitespace()
-        .map(|s| s.bytes().collect_vec())
-        .collect::<Vec<_>>();
+fn tokenize(input: &str) -> Vec<(usize, Vec<u8>)> {
+    let mut tokens = Vec::new();
+    let mut start = 0;
+    let mut in_whitespace = false;
+
+    for (index, ch) in input.char_indices() {
+        if ch.is_whitespace() {
+            if !in_whitespace {
+                // 非空白文字列のトークンを追加
+                if start != index {
+                    tokens.push((start, input[start..index].bytes().collect()));
+                }
+                start = index;
+                in_whitespace = true;
+            }
+        } else {
+            if in_whitespace {
+                start = index;
+                in_whitespace = false;
+            }
+        }
+    }
+
+    // 最後のトークンを追加
+    if !in_whitespace && start < input.len() {
+        tokens.push((start, input[start..].bytes().collect()));
+    }
+
+    tokens
+}
+
+fn eval_to_node(s: &str) -> anyhow::Result<NodePos> {
+    let tokens = tokenize(s);
     let mut p = 0;
     let mut binders = vec![];
-    let root = parse(&tokens, &mut p, &mut binders);
+    let root = parse(&tokens, &mut p, &mut binders)?;
     assert_eq!(p, tokens.len());
     assert_eq!(binders.len(), 0);
     rec(&root, &mut 0)
 }
 
-pub fn eval(s: &str) -> Value {
-    if let Node::Const(val) = eval_to_node(s) {
-        val
-    } else {
-        panic!("non-const result)");
+pub fn eval(s: &str) -> anyhow::Result<Value> {
+    match eval_to_node(s)? {
+        NodePos(Node::Const(val), _) => Ok(val),
+        v => anyhow::bail!("Non-const result: {}", v),
     }
 }
 
 #[test]
 fn test() {
-    assert_eq!(eval("I/6"), Value::Int(1337.into()));
-    assert_eq!(eval("SB%,,/}Q/2,$_"), Value::Str(b"Hello World!".to_vec()));
-    assert_eq!(eval("U- I$"), Value::Int((-3).into()));
-    assert_eq!(eval("U! T"), Value::Bool(false));
-    assert_eq!(eval("U# S4%34"), Value::Int(15818151.into()));
-    assert_eq!(eval("U$ I4%34"), Value::Str(b"test".to_vec()));
-    assert_eq!(eval("B+ I# I$"), Value::Int(5.into()));
-    assert_eq!(eval("B- I$ I#"), Value::Int(1.into()));
-    assert_eq!(eval("B* I$ I#"), Value::Int(6.into()));
-    assert_eq!(eval("B/ U- I( I#"), Value::Int((-3).into()));
-    assert_eq!(eval("B% U- I( I#"), Value::Int((-1).into()));
-    assert_eq!(eval("B< I$ I#"), Value::Bool(false));
-    assert_eq!(eval("B> I$ I#"), Value::Bool(true));
-    assert_eq!(eval("B= I$ I#"), Value::Bool(false));
-    assert_eq!(eval("B| T F"), Value::Bool(true));
-    assert_eq!(eval("B& T F"), Value::Bool(false));
-    assert_eq!(eval("B. S4% S34"), Value::Str(b"test".to_vec()));
-    assert_eq!(eval("BT I$ S4%34"), Value::Str(b"tes".to_vec()));
-    assert_eq!(eval("BD I$ S4%34"), Value::Str(b"t".to_vec()));
-    assert_eq!(eval("? B> I# I$ S9%3 S./"), Value::Str(b"no".to_vec()));
+    assert_eq!(eval("I/6").unwrap(), Value::Int(1337.into()));
     assert_eq!(
-        eval("B$ B$ L# L$ v# B. SB%,,/ S}Q/2,$_ IK"),
+        eval("SB%,,/}Q/2,$_").unwrap(),
         Value::Str(b"Hello World!".to_vec())
     );
-    assert_eq!(eval(r#"B$ L# B$ L" B+ v" v" B* I$ I# v8"#), eval("I-"));
+    assert_eq!(eval("U- I$").unwrap(), Value::Int((-3).into()));
+    assert_eq!(eval("U! T").unwrap(), Value::Bool(false));
+    assert_eq!(eval("U# S4%34").unwrap(), Value::Int(15818151.into()));
+    assert_eq!(eval("U$ I4%34").unwrap(), Value::Str(b"test".to_vec()));
+    assert_eq!(eval("B+ I# I$").unwrap(), Value::Int(5.into()));
+    assert_eq!(eval("B- I$ I#").unwrap(), Value::Int(1.into()));
+    assert_eq!(eval("B* I$ I#").unwrap(), Value::Int(6.into()));
+    assert_eq!(eval("B/ U- I( I#").unwrap(), Value::Int((-3).into()));
+    assert_eq!(eval("B% U- I( I#").unwrap(), Value::Int((-1).into()));
+    assert_eq!(eval("B< I$ I#").unwrap(), Value::Bool(false));
+    assert_eq!(eval("B> I$ I#").unwrap(), Value::Bool(true));
+    assert_eq!(eval("B= I$ I#").unwrap(), Value::Bool(false));
+    assert_eq!(eval("B| T F").unwrap(), Value::Bool(true));
+    assert_eq!(eval("B& T F").unwrap(), Value::Bool(false));
+    assert_eq!(eval("B. S4% S34").unwrap(), Value::Str(b"test".to_vec()));
+    assert_eq!(eval("BT I$ S4%34").unwrap(), Value::Str(b"tes".to_vec()));
+    assert_eq!(eval("BD I$ S4%34").unwrap(), Value::Str(b"t".to_vec()));
+    assert_eq!(
+        eval("? B> I# I$ S9%3 S./").unwrap(),
+        Value::Str(b"no".to_vec())
+    );
+    assert_eq!(
+        eval("B$ B$ L# L$ v# B. SB%,,/ S}Q/2,$_ IK").unwrap(),
+        Value::Str(b"Hello World!".to_vec())
+    );
+    assert_eq!(
+        eval(r#"B$ L# B$ L" B+ v" v" B* I$ I# v8"#).unwrap(),
+        eval("I-").unwrap()
+    );
 }
 
 #[test]
 fn test2() {
     // (\y. (\x. (\y. x + y)) y) 3 4
     assert_eq!(
-        eval("B$ B$ B$ Ly Lx Ly B+ vx vy vy I$ I%"),
+        eval("B$ B$ B$ Ly Lx Ly B+ vx vy vy I$ I%").unwrap(),
         Value::Int(7.into())
     );
 
     // (\x. x + x) 3
-    assert_eq!(eval("B$ Lx B+ vx vx I$"), Value::Int(6.into()));
+    assert_eq!(eval("B$ Lx B+ vx vx I$").unwrap(), Value::Int(6.into()));
     // (\x. (\f. f (f (f x))) (\x. x + x)) 3
     assert_eq!(
-        eval("B$ Lx B$ Lf B$ vf B$ vf B$ vf vx Lx B+ vx vx I$"),
+        eval("B$ Lx B$ Lf B$ vf B$ vf B$ vf vx Lx B+ vx vx I$").unwrap(),
         Value::Int(24.into())
     );
     // (\y. (\x. (\f. f (f (f x))) (\x. x * y)) 3) 4
     assert_eq!(
-        eval("B$ Ly B$ Lx B$ Lf B$ vf B$ vf B$ vf vx Lx B* vx vy I$ I%"),
+        eval("B$ Ly B$ Lx B$ Lf B$ vf B$ vf B$ vf vx Lx B* vx vy I$ I%").unwrap(),
         Value::Int(192.into())
     );
     // (\x. (\y. (\f. f (f (f x))) (\x. x * y)) 4) 3
     assert_eq!(
-        eval("B$ Lx B$ Ly B$ Lf B$ vf B$ vf B$ vf vx Lx B* vx vy I% I$"),
+        eval("B$ Lx B$ Ly B$ Lf B$ vf B$ vf B$ vf vx Lx B* vx vy I% I$").unwrap(),
         Value::Int(192.into())
     );
 
@@ -608,14 +760,17 @@ fn test2() {
     // y = \f. (\x. f (x x)) (\x. f (x x))
     let y = "Lf B$ Lx B$ vf B$ vx vx Lx B$ vf B$ vx vx";
     let f = format!(r#"B$ {y} Lf Lx ? B> vx I! B* vx B$ vf B- vx I" I""#);
-    assert_eq!(eval(&format!("B$ {f} I&")), Value::Int(120.into()));
+    assert_eq!(eval(&format!("B$ {f} I&")).unwrap(), Value::Int(120.into()));
 }
 
 #[test]
 fn test_reduction() {
     // (\x. x) [x := y]
     // \x. x
-    assert_eq!(eval_to_node("B$ Lx Lx vx vy"), eval_to_node("Lx vx"));
+    assert_eq!(
+        eval_to_node("B$ Lx Lx vx vy").unwrap(),
+        eval_to_node("Lx vx").unwrap()
+    );
 
     // // (\y. x + y) [x := y]
     // // (\z. y + z)
@@ -627,8 +782,8 @@ fn test_reduction() {
     // \x. \y. (\a. \b. a + b - z) x y
     // // \x. \y. x + y - z
     assert_eq!(
-        eval_to_node("B$ Lf Lx Ly B$ B$ vf vx vy La Lb B- B+ va vb vz"),
-        eval_to_node("Lx Ly B$ B$ La Lb B- B+ va vb vz vx vy")
+        eval_to_node("B$ Lf Lx Ly B$ B$ vf vx vy La Lb B- B+ va vb vz").unwrap(),
+        eval_to_node("Lx Ly B$ B$ La Lb B- B+ va vb vz vx vy").unwrap()
     );
 
     // (1-origin)
@@ -638,8 +793,8 @@ fn test_reduction() {
     // λy. z (λx. w x) (λu. u (λx. w x))
     let m = "Lx Ly B$ B$ vz vx Lu B$ vu vx";
     let n = "Lx B$ vw vx";
-    let reduced = eval_to_node(&format!("B$ B$ B$ B$ Lw Lp Lz Lq B$ {m} {n} Sw Sp Sz Sq"));
-    let expected = eval_to_node("Ly B$ B$ Sz Lx B$ Sw vx Lu B$ vu Lx B$ Sw vx");
+    let reduced = eval_to_node(&format!("B$ B$ B$ B$ Lw Lp Lz Lq B$ {m} {n} Sw Sp Sz Sq")).unwrap();
+    let expected = eval_to_node("Ly B$ B$ Sz Lx B$ Sw vx Lu B$ vu Lx B$ Sw vx").unwrap();
     eprintln!("{}", reduced);
     eprintln!("{}", expected);
     dbg!(&reduced, &expected);

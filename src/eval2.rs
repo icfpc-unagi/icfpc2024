@@ -1,9 +1,6 @@
 #![allow(non_snake_case)]
 
-// use anyhow::Ok;
-// use itertools::Itertools;
 use num::bigint::BigInt;
-// use std::any;
 use std::result::Result::Ok;
 use std::{cell::RefCell, rc::Rc};
 

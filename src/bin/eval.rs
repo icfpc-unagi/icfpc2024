@@ -5,6 +5,13 @@ fn main() {
     for line in std::io::stdin().lock().lines() {
         let line = line.unwrap();
         let line = line.trim();
-        eprintln!("{}", eval(line));
+        match eval(line) {
+            Ok(result) => {
+                println!("{}", result);
+            }
+            Err(err) => {
+                eprintln!("Error: {}", err);
+            }
+        }
     }
 }
