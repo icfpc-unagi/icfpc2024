@@ -5,16 +5,16 @@ use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use solution::*;
 
-const TL: f64 = 600.0;
+const TL: f64 = 300.0;
 const V_PENALITY: i64 = 1;
 const TARGET_T: i64 = 0;
+
+// 訪問済みの頂点数で区切ってビームサーチをする
+// 訪問順の多様性を重視
 
 fn main() {
     get_time();
     let input = read_input();
-    if input.ps.len() >= 1000 {
-        return;
-    }
     let best = if let Ok(best) = std::env::var("BEST") {
         read_output(&best)
     } else {
@@ -70,47 +70,78 @@ fn main() {
                     T += 1;
                 }
                 let mut used = FxHashSet::default();
-                for _ in 0..1 {
-                    let mut p = state.p;
-                    let mut v = state.v;
-                    let mut id = state.id;
-                    let mut tmp = vec![];
-                    for t in 0..T {
-                        let dvx = if p.0 + v.0 * (T - t) < input.ps[i].0 {
-                            1
-                        } else if p.0 + v.0 * (T - t) > input.ps[i].0 {
-                            -1
-                        } else {
-                            0
-                        };
-                        let dvy = if p.1 + v.1 * (T - t) < input.ps[i].1 {
-                            1
-                        } else if p.1 + v.1 * (T - t) > input.ps[i].1 {
-                            -1
-                        } else {
-                            0
-                        };
-                        v.0 += dvx;
-                        v.1 += dvy;
-                        p.0 += v.0;
-                        p.1 += v.1;
-                        tmp.push((dvy + 1) * 3 + dvx + 1 + 1);
-                    }
-                    assert_eq!(p, input.ps[i]);
-                    if used.insert(v) {
-                        for mv in tmp {
-                            id = trace.add(mv, id);
+                for _ in 0..3 {
+                    let dx = input.ps[i].0 - state.p.0;
+                    let dy = input.ps[i].1 - state.p.1;
+                    if state.v.0 * T - T * (T + 1) / 2 <= dx
+                        && dx <= state.v.0 * T + T * (T + 1) / 2
+                    {
+                        if state.v.1 * T - T * (T + 1) / 2 <= dy
+                            && dy <= state.v.1 * T + T * (T + 1) / 2
+                        {
+                            let mut p = state.p;
+                            let mut v = state.v;
+                            let mut id = state.id;
+                            let mut tmp = vec![];
+                            for t in 0..T {
+                                let cand = (-1..=1)
+                                    .filter(|&a| {
+                                        p.0 + (v.0 + a) * (T - t) - (T - t) * (T - t - 1) / 2
+                                            <= input.ps[i].0
+                                            && input.ps[i].0
+                                                <= p.0
+                                                    + (v.0 + a) * (T - t)
+                                                    + (T - t) * (T - t - 1) / 2
+                                    })
+                                    .collect_vec();
+                                let dvx = if v.0 > 0 {
+                                    cand[cand.len() - 1]
+                                } else if v.0 < 0 {
+                                    cand[0]
+                                } else {
+                                    cand[cand.len() / 2]
+                                };
+                                let cand = (-1..=1)
+                                    .filter(|&a| {
+                                        p.1 + (v.1 + a) * (T - t) - (T - t) * (T - t - 1) / 2
+                                            <= input.ps[i].1
+                                            && input.ps[i].1
+                                                <= p.1
+                                                    + (v.1 + a) * (T - t)
+                                                    + (T - t) * (T - t - 1) / 2
+                                    })
+                                    .collect_vec();
+                                let dvy = if v.1 > 0 {
+                                    cand[cand.len() - 1]
+                                } else if v.1 < 0 {
+                                    cand[0]
+                                } else {
+                                    cand[cand.len() / 2]
+                                };
+                                v.0 += dvx;
+                                v.1 += dvy;
+                                p.0 += v.0;
+                                p.1 += v.1;
+                                tmp.push((dvy + 1) * 3 + dvx + 1 + 1);
+                            }
+                            assert_eq!(p, input.ps[i]);
+                            if used.insert(v) {
+                                for mv in tmp {
+                                    id = trace.add(mv, id);
+                                }
+                                let mut visited = state.visited.clone();
+                                visited.insert(i);
+                                next.push(State {
+                                    visited,
+                                    p,
+                                    v,
+                                    t: state.t + T,
+                                    id,
+                                });
+                            }
                         }
-                        let mut visited = state.visited.clone();
-                        visited.insert(i);
-                        next.push(State {
-                            visited,
-                            p,
-                            v,
-                            t: state.t + T,
-                            id,
-                        });
                     }
+                    T += 1;
                 }
             }
             if get_time() > TL * (k + 1) as f64 / input.ps.len() as f64 {
@@ -133,8 +164,8 @@ fn main() {
                 best_state.id = trace.add(mv, best_state.id);
                 best_state.t += 1;
             }
+            next.push(best_state.clone());
         }
-        next.push(best_state.clone());
         if k + 1 == input.ps.len() {
             next.sort_by_key(|s| s.t);
         } else {
@@ -151,7 +182,7 @@ fn main() {
         beam = vec![];
         let mut used = FxHashSet::default();
         for s in next {
-            let h = (s.visited.clone(), s.p, s.v);
+            let h = s.p;
             if used.contains(&h) {
                 continue;
             }

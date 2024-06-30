@@ -5,16 +5,15 @@ use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use solution::*;
 
-const TL: f64 = 600.0;
+const TL: f64 = 6.0 * 3600.0;
 const V_PENALITY: i64 = 1;
-const TARGET_T: i64 = 0;
+
+// 訪問済みの頂点数で区切ってビームサーチをする
+// 訪問順の多様性を重視
 
 fn main() {
     get_time();
     let input = read_input();
-    if input.ps.len() >= 1000 {
-        return;
-    }
     let best = if let Ok(best) = std::env::var("BEST") {
         read_output(&best)
     } else {
@@ -45,8 +44,7 @@ fn main() {
                 for i in 0..input.ps.len() {
                     if !state.visited[i] {
                         list.insert(
-                            (input.ps[i].0 - state.p.0 - state.v.0 * TARGET_T).abs()
-                                + (input.ps[i].1 - state.p.1 - state.v.1 * TARGET_T).abs(),
+                            (input.ps[i].0 - state.p.0).abs() + (input.ps[i].1 - state.p.1).abs(),
                             i,
                         );
                     }
@@ -76,19 +74,35 @@ fn main() {
                     let mut id = state.id;
                     let mut tmp = vec![];
                     for t in 0..T {
-                        let dvx = if p.0 + v.0 * (T - t) < input.ps[i].0 {
-                            1
-                        } else if p.0 + v.0 * (T - t) > input.ps[i].0 {
-                            -1
+                        let cand = (-1..=1)
+                            .filter(|&a| {
+                                p.0 + (v.0 + a) * (T - t) - (T - t) * (T - t - 1) / 2
+                                    <= input.ps[i].0
+                                    && input.ps[i].0
+                                        <= p.0 + (v.0 + a) * (T - t) + (T - t) * (T - t - 1) / 2
+                            })
+                            .collect_vec();
+                        let dvx = if v.0 > 0 {
+                            cand[cand.len() - 1]
+                        } else if v.0 < 0 {
+                            cand[0]
                         } else {
-                            0
+                            cand[cand.len() / 2]
                         };
-                        let dvy = if p.1 + v.1 * (T - t) < input.ps[i].1 {
-                            1
-                        } else if p.1 + v.1 * (T - t) > input.ps[i].1 {
-                            -1
+                        let cand = (-1..=1)
+                            .filter(|&a| {
+                                p.1 + (v.1 + a) * (T - t) - (T - t) * (T - t - 1) / 2
+                                    <= input.ps[i].1
+                                    && input.ps[i].1
+                                        <= p.1 + (v.1 + a) * (T - t) + (T - t) * (T - t - 1) / 2
+                            })
+                            .collect_vec();
+                        let dvy = if v.1 > 0 {
+                            cand[cand.len() - 1]
+                        } else if v.1 < 0 {
+                            cand[0]
                         } else {
-                            0
+                            cand[cand.len() / 2]
                         };
                         v.0 += dvx;
                         v.1 += dvy;
@@ -151,7 +165,7 @@ fn main() {
         beam = vec![];
         let mut used = FxHashSet::default();
         for s in next {
-            let h = (s.visited.clone(), s.p, s.v);
+            let h = (s.p, s.visited.clone());
             if used.contains(&h) {
                 continue;
             }
