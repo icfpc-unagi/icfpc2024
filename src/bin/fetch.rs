@@ -72,6 +72,7 @@ async fn main() -> anyhow::Result<()> {
             .replace("Z", "");
         let id = id + "-" + &row.uuid;
 
+        let mut is_echo = false;
         let filename = format!("history/{}/request.txt", id);
         std::fs::create_dir_all(format!("history/{}", id))
             .with_context(|| format!("Failed to create directory history/{}", id))?;
@@ -90,6 +91,14 @@ async fn main() -> anyhow::Result<()> {
             let body = res.text().await?;
             std::fs::write(&filename, body)
                 .with_context(|| format!("Failed to write to {}", filename))?;
+        }
+
+        if std::path::Path::new(&filename).exists() {
+            let body = std::fs::read_to_string(&filename)
+                .with_context(|| format!("Failed to read from {}", filename))?;
+            if body.contains("%#(/}") {
+                is_echo = true;
+            }
         }
 
         let filename = format!("history/{}/response.txt", id);
@@ -123,7 +132,7 @@ async fn main() -> anyhow::Result<()> {
             }
         }
 
-        if std::path::Path::new(&filename).exists() {
+        if !is_echo && std::path::Path::new(&filename).exists() {
             let decoded_text = std::fs::read_to_string(&filename)
                 .with_context(|| format!("Failed to read from {}", filename))?;
             // e.g., "Correct, you solved [problem_name] with a score of [score]!"
@@ -161,6 +170,8 @@ async fn main() -> anyhow::Result<()> {
     for (problem_name, group) in &scores.into_iter().group_by(|s| s.problem_name.clone()) {
         let mut best_score = std::i64::MAX;
         let mut best_id = "".to_string();
+        let mut group: Vec<Score> = group.collect::<Vec<Score>>();
+        group.sort_by(|a, b| a.id.cmp(&b.id));
         for score in group {
             if score.score < best_score {
                 best_score = score.score;
