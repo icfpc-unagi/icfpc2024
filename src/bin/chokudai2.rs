@@ -102,6 +102,10 @@ fn solve2(input: &Input, step: i32) -> i32 {
     let best_result = best_result.lock().unwrap();
     if best_result.0 == 0 {
         println!("OK : {}", best_result.1);
+        println!("a : {}", best_result.1 / 1024 / 1024);
+        println!("b : {}", best_result.1 / 1024 % 1024);
+        println!("c : {}", best_result.1 % 1024);
+        /*
         for p in 0..prime.len() {
             let mul = (best_result.1 as i32 >> (p * 2)) % 4;
             if mul != 0 {
@@ -109,6 +113,7 @@ fn solve2(input: &Input, step: i32) -> i32 {
                 println!("      {pp} {mul}");
             }
         }
+        */
         return 1;
     } else {
         println!("NG {} at i: {}", best_result.0, best_result.1);
