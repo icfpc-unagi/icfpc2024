@@ -42,19 +42,23 @@ fn thunk(v: NodePos) -> Node {
     Node::Thunk(Rc::new(RefCell::new(v)))
 }
 
+fn to_icfp_string(val: &BigInt) -> String {
+    let mut val = val.clone();
+    let mut s = vec![];
+    while val > 0.into() {
+        let v: u8 = (val.clone() % BigInt::from(94)).try_into().unwrap();
+        s.push(v + 33);
+        val /= 94;
+    }
+    s.reverse();
+    String::from_utf8_lossy(&s).to_string()
+}
+
 impl std::fmt::Display for Node {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Node::Const(val) => write!(f, "{}", val.pretty()),
-            Node::Var(name, _index) => {
-                // we don't need index for input (before reduction)
-                write!(f, "v{}", name)
-                // if let Some(index) = index {
-                //     write!(f, "v{}({})", name, index)
-                // } else {
-                //     write!(f, "v{}", name)
-                // }
-            }
+            Node::Var(name, _index) => write!(f, "v{}", to_icfp_string(name)),
             Node::Unary { op, v } => write!(f, "({} {})", *op as char, v),
             Node::Binary { op, v1, v2 } => {
                 let op = *op as char;
@@ -69,7 +73,9 @@ impl std::fmt::Display for Node {
                 }
             }
             Node::If { cond, v1, v2 } => write!(f, "({} ? {} : {})", cond, v1, v2),
-            Node::Lambda { var, exp } => write!(f, "(\\v{} -> {})", var, exp),
+            Node::Lambda { var, exp } => {
+                write!(f, "(\\v{} -> {})", to_icfp_string(var), exp)
+            }
             // Return an fmt error.
             Node::Thunk(_) => write!(f, "ERROR: Thunk cannot be displayed"),
         }
@@ -103,6 +109,9 @@ pub fn parse(
     p: &mut usize,
     binders: &mut Vec<BigInt>,
 ) -> anyhow::Result<NodePos> {
+    if tokens.len() <= *p {
+        anyhow::bail!("Token after {}: unexpected end of input", tokens[*p - 1].0);
+    }
     let id = tokens[*p].1[0];
     let body = &tokens[*p].1[1..];
     *p += 1;
@@ -699,25 +708,16 @@ fn tokenize(input: &str) -> Vec<(usize, Vec<u8>)> {
     let mut in_whitespace = false;
 
     for (index, ch) in input.char_indices() {
-        if ch.is_whitespace() {
-            if !in_whitespace {
-                // 非空白文字列のトークンを追加
-                if start != index {
-                    tokens.push((start, input[start..index].bytes().collect()));
-                }
-                start = index;
-                in_whitespace = true;
+        if ch.is_whitespace() != in_whitespace {
+            if ch.is_whitespace() {
+                tokens.push((start, input[start..index].bytes().collect()));
             }
-        } else {
-            if in_whitespace {
-                start = index;
-                in_whitespace = false;
-            }
+            start = index;
+            in_whitespace = ch.is_whitespace();
         }
     }
 
-    // 最後のトークンを追加
-    if !in_whitespace && start < input.len() {
+    if !in_whitespace {
         tokens.push((start, input[start..].bytes().collect()));
     }
 
@@ -824,6 +824,11 @@ fn test_reduction() {
         eval_to_node("Lx vx").unwrap()
     );
 
+    assert_eq!(
+        eval_to_node("B$ Lx vy I0").unwrap(),
+        eval_to_node("vy").unwrap()
+    );
+
     // // (\y. x + y) [x := y]
     // // (\z. y + z)
     // let mut expected = eval_to_node("Lz B+ vy vz")
@@ -851,4 +856,41 @@ fn test_reduction() {
     eprintln!("{}", expected);
     dbg!(&reduced, &expected);
     assert_eq!(reduced, expected);
+}
+
+#[test]
+fn test_position() {
+    // 値はそのポジションをとるべき
+    assert_eq!(eval_to_node("I0").unwrap().1, 0);
+    // 計算結果は計算結果の位置になって欲しい
+    // assert_eq!(eval_to_node("B+ I0 I0").unwrap().1, 0);
+}
+
+#[test]
+fn test_errors() {
+    // 一項演算子のあとがないパターン
+    assert_eq!(
+        format!("{}", eval_to_node("U-").unwrap_err()),
+        "Token after 0: unexpected end of input"
+    );
+    // 二項演算子のあとがないパターン
+    assert_eq!(
+        format!("{}", eval_to_node("B. B.").unwrap_err()),
+        "Token after 3: unexpected end of input"
+    );
+    // 文字列演算ができないパターン
+    assert_eq!(
+        format!("{}", eval_to_node("B. I0 S").unwrap_err()),
+        r#"Token 6: concat of non-str: 15:3 . "":6"#,
+    );
+    // 整数演算ができないパターン
+    assert_eq!(
+        format!("{}", eval_to_node("B+ I0 S").unwrap_err()),
+        r#"Token 6: addition of non-int: 15:3 + "":6"#,
+    );
+    // 計算結果の演算ができないパターン
+    // assert_eq!(
+    //     format!("{}", eval_to_node("B+ I0 B. S0 S1").unwrap_err()),
+    //     r#"Token 12: addition of non-int: 15:3 + "pq":6"#,
+    // );
 }
