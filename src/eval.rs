@@ -42,19 +42,23 @@ fn thunk(v: NodePos) -> Node {
     Node::Thunk(Rc::new(RefCell::new(v)))
 }
 
+fn to_icfp_string(val: &BigInt) -> String {
+    let mut val = val.clone();
+    let mut s = vec![];
+    while val > 0.into() {
+        let v: u8 = (val.clone() % BigInt::from(94)).try_into().unwrap();
+        s.push(v + 33);
+        val /= 94;
+    }
+    s.reverse();
+    String::from_utf8_lossy(&s).to_string()
+}
+
 impl std::fmt::Display for Node {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Node::Const(val) => write!(f, "{}", val.pretty()),
-            Node::Var(name, _index) => {
-                // we don't need index for input (before reduction)
-                write!(f, "v{}", name)
-                // if let Some(index) = index {
-                //     write!(f, "v{}({})", name, index)
-                // } else {
-                //     write!(f, "v{}", name)
-                // }
-            }
+            Node::Var(name, _index) => write!(f, "v{}", to_icfp_string(name)),
             Node::Unary { op, v } => write!(f, "({} {})", *op as char, v),
             Node::Binary { op, v1, v2 } => {
                 let op = *op as char;
@@ -63,13 +67,22 @@ impl std::fmt::Display for Node {
                     'D' => Some("drop"),
                     _ => None,
                 } {
-                    return write!(f, "({} {} {})", fullname, v1, v2);
+                    return if f.alternate() {
+                        write!(f, "({} {:#} {:#})", fullname, v1, v2)
+                    } else {
+                        write!(f, "({} {} {})", fullname, v1, v2)
+                    };
+                }
+                if f.alternate() {
+                    write!(f, "({:#} {} {:#})", v1, op, v2)
                 } else {
                     write!(f, "({} {} {})", v1, op, v2)
                 }
             }
             Node::If { cond, v1, v2 } => write!(f, "({} ? {} : {})", cond, v1, v2),
-            Node::Lambda { var, exp } => write!(f, "(\\v{} -> {})", var, exp),
+            Node::Lambda { var, exp } => {
+                write!(f, "(\\v{} -> {})", to_icfp_string(var), exp)
+            }
             // Return an fmt error.
             Node::Thunk(_) => write!(f, "ERROR: Thunk cannot be displayed"),
         }
@@ -79,7 +92,7 @@ impl std::fmt::Display for Node {
 impl std::fmt::Display for NodePos {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if f.alternate() {
-            write!(f, "{}:{}", self.0, self.1)
+            write!(f, "{:#}:{}", self.0, self.1)
         } else {
             write!(f, "{}", self.0)
         }
@@ -103,23 +116,27 @@ pub fn parse(
     p: &mut usize,
     binders: &mut Vec<BigInt>,
 ) -> anyhow::Result<NodePos> {
+    if tokens.len() <= *p {
+        anyhow::bail!("Token after {}: unexpected end of input", tokens[*p - 1].0);
+    }
+    let pos: usize = tokens[*p].0;
     let id = tokens[*p].1[0];
     let body = &tokens[*p].1[1..];
     *p += 1;
     match id {
         b'T' => match body.len() {
-            0 => Ok(NodePos(Node::Const(Value::Bool(true)), tokens[*p - 1].0)),
+            0 => Ok(NodePos(Node::Const(Value::Bool(true)), pos)),
             _ => anyhow::bail!(
                 "Token at {}: T needs no argument, but: {}",
-                tokens[*p - 1].0,
+                pos,
                 body.iter().map(|&b| b as char).collect::<String>()
             ),
         },
         b'F' => match body.len() {
-            0 => Ok(NodePos(Node::Const(Value::Bool(false)), tokens[*p - 1].0)),
+            0 => Ok(NodePos(Node::Const(Value::Bool(false)), pos)),
             _ => anyhow::bail!(
                 "Token at {}: F needs no argument, but: {}",
-                tokens[*p - 1].0,
+                pos,
                 body.iter().map(|&b| b as char).collect::<String>()
             ),
         },
@@ -128,27 +145,23 @@ pub fn parse(
             for (i, &b) in body.iter().enumerate() {
                 match b {
                     b'!'..=b'~' => val = val * 94 + (b - 33),
-                    _ => anyhow::bail!(
-                        "Token at {}: invalid character in integer at {}",
-                        tokens[*p - 1].0,
-                        i
-                    ),
+                    _ => anyhow::bail!("Token at {}: invalid character in integer at {}", pos, i),
                 }
             }
-            Ok(NodePos(Node::Const(Value::Int(val)), tokens[*p - 1].0))
+            Ok(NodePos(Node::Const(Value::Int(val)), pos))
         }
-        b'S' => Ok(NodePos(Node::Const(S(body)), tokens[*p - 1].0)),
+        b'S' => Ok(NodePos(Node::Const(S(body)), pos)),
         b'U' => match body.len() {
             1 => Ok(NodePos(
                 Node::Unary {
                     op: body[0],
                     v: Rc::new(parse(tokens, p, binders)?),
                 },
-                tokens[*p - 1].0,
+                pos,
             )),
             _ => anyhow::bail!(
                 "Token at {}: U takes exactly one argument, but: {}",
-                tokens[*p - 1].0,
+                pos,
                 body.iter().map(|&b| b as char).collect::<String>()
             ),
         },
@@ -159,11 +172,11 @@ pub fn parse(
                     v1: Rc::new(parse(tokens, p, binders)?),
                     v2: Rc::new(parse(tokens, p, binders)?),
                 },
-                tokens[*p - 1].0,
+                pos,
             )),
             _ => anyhow::bail!(
                 "Token at {}: B takes exactly two arguments, but: {}",
-                tokens[*p - 1].0,
+                pos,
                 body.iter().map(|&b| b as char).collect::<String>()
             ),
         },
@@ -174,11 +187,11 @@ pub fn parse(
                     v1: Rc::new(parse(tokens, p, binders)?),
                     v2: Rc::new(parse(tokens, p, binders)?),
                 },
-                tokens[*p - 1].0,
+                pos,
             )),
             _ => anyhow::bail!(
                 "Token at {}: ? takes no arguments, but: {}",
-                tokens[*p - 1].0,
+                pos,
                 body.iter().map(|&b| b as char).collect::<String>()
             ),
         },
@@ -189,7 +202,7 @@ pub fn parse(
                     b'!'..=b'~' => var = var * 94 + (b - 33),
                     _ => anyhow::bail!(
                         "Token at {}: invalid character '{}' in lambda argument at {}",
-                        tokens[*p - 1].0,
+                        pos,
                         b as char,
                         i
                     ),
@@ -210,20 +223,16 @@ pub fn parse(
                     b'!'..=b'~' => var = var * 94 + (b - 33),
                     _ => anyhow::bail!(
                         "Token at {}: invalid character '{}' in variable at {}",
-                        tokens[*p - 1].0,
+                        pos,
                         b as char,
                         i
                     ),
                 }
             }
             let de_bruijn_index = binders.iter().rev().position(|b| b == &var);
-            Ok(NodePos(Node::Var(var, de_bruijn_index), tokens[*p - 1].0))
+            Ok(NodePos(Node::Var(var, de_bruijn_index), pos))
         }
-        id => anyhow::bail!(
-            "Token at {}: unknown token: {}",
-            tokens[*p - 1].0,
-            id as char
-        ),
+        id => anyhow::bail!("Token at {}: unknown token: {}", pos, id as char),
     }
 }
 
@@ -699,25 +708,16 @@ fn tokenize(input: &str) -> Vec<(usize, Vec<u8>)> {
     let mut in_whitespace = false;
 
     for (index, ch) in input.char_indices() {
-        if ch.is_whitespace() {
-            if !in_whitespace {
-                // 非空白文字列のトークンを追加
-                if start != index {
-                    tokens.push((start, input[start..index].bytes().collect()));
-                }
-                start = index;
-                in_whitespace = true;
+        if ch.is_whitespace() != in_whitespace {
+            if ch.is_whitespace() {
+                tokens.push((start, input[start..index].bytes().collect()));
             }
-        } else {
-            if in_whitespace {
-                start = index;
-                in_whitespace = false;
-            }
+            start = index;
+            in_whitespace = ch.is_whitespace();
         }
     }
 
-    // 最後のトークンを追加
-    if !in_whitespace && start < input.len() {
+    if !in_whitespace {
         tokens.push((start, input[start..].bytes().collect()));
     }
 
@@ -736,7 +736,7 @@ fn eval_to_node(s: &str) -> anyhow::Result<NodePos> {
 
 pub fn eval(s: &str) -> anyhow::Result<Value> {
     match eval_to_node(s)? {
-        NodePos(Node::Const(val), _) => Ok(val),
+        NodePos(Node::Const(val), pos) => Ok(val),
         v => anyhow::bail!("Non-const result: {}", v),
     }
 }
@@ -824,6 +824,11 @@ fn test_reduction() {
         eval_to_node("Lx vx").unwrap()
     );
 
+    assert_eq!(
+        eval_to_node("B$ Lx vy I0").unwrap(),
+        eval_to_node("vy").unwrap()
+    );
+
     // // (\y. x + y) [x := y]
     // // (\z. y + z)
     // let mut expected = eval_to_node("Lz B+ vy vz")
@@ -851,4 +856,41 @@ fn test_reduction() {
     eprintln!("{}", expected);
     dbg!(&reduced, &expected);
     assert_eq!(reduced, expected);
+}
+
+#[test]
+fn test_position() {
+    // 値はそのポジションをとるべき
+    assert_eq!(eval_to_node("I0").unwrap().1, 0);
+    // 計算結果は計算結果の位置になって欲しい
+    assert_eq!(eval_to_node("B+ I0 I0").unwrap().1, 0);
+}
+
+#[test]
+fn test_errors() {
+    // 一項演算子のあとがないパターン
+    assert_eq!(
+        format!("{}", eval_to_node("U-").unwrap_err()),
+        "Token after 0: unexpected end of input"
+    );
+    // 二項演算子のあとがないパターン
+    assert_eq!(
+        format!("{}", eval_to_node("B. B.").unwrap_err()),
+        "Token after 3: unexpected end of input"
+    );
+    // 文字列演算ができないパターン
+    assert_eq!(
+        format!("{}", eval_to_node("B. I0 S").unwrap_err()),
+        r#"Token 0: concat of non-str: 15:3 . "":6"#,
+    );
+    // 整数演算ができないパターン
+    assert_eq!(
+        format!("{}", eval_to_node("B+ I0 S").unwrap_err()),
+        r#"Token 0: addition of non-int: 15:3 + "":6"#,
+    );
+    // 計算結果の演算ができないパターン
+    assert_eq!(
+        format!("{}", eval_to_node("B+ I0 B. S0 S1").unwrap_err()),
+        r#"Token 0: addition of non-int: 15:3 + "pq":6"#,
+    );
 }
