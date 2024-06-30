@@ -70,7 +70,8 @@ impl std::fmt::Display for Node {
             }
             Node::If { cond, v1, v2 } => write!(f, "({} ? {} : {})", cond, v1, v2),
             Node::Lambda { var, exp } => write!(f, "(\\v{} -> {})", var, exp),
-            Node::Thunk(_) => panic!("display thunk"),
+            // Return an fmt error.
+            Node::Thunk(_) => write!(f, "ERROR: Thunk cannot be displayed"),
         }
     }
 }
@@ -375,13 +376,13 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
                 NodePos(Node::Const(Value::Int(val)), _) => {
                     Ok(NodePos(Node::Const(Value::Int(-val)), pos))
                 }
-                _ => panic!("negation of non-int"),
+                v => anyhow::bail!("Token {}: negation of non-int: {:#}", pos, v),
             },
             b'!' => match rec(&v, count)? {
                 NodePos(Node::Const(Value::Bool(val)), _) => {
                     Ok(NodePos(Node::Const(Value::Bool(!val)), pos))
                 }
-                _ => panic!("negation of non-bool"),
+                v => anyhow::bail!("Token {}: negation of non-bool: {:#}", pos, v),
             },
             b'#' => match rec(&v, count)? {
                 NodePos(Node::Const(Value::Str(val)), _) => {
@@ -392,7 +393,7 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
                     }
                     Ok(NodePos(Node::Const(Value::Int(v)), pos))
                 }
-                _ => panic!("length of non-str"),
+                v => anyhow::bail!("Token {}: length of non-str: {:#}", pos, v),
             },
             b'$' => match rec(&v, count)? {
                 NodePos(Node::Const(Value::Int(mut val)), _) => {
@@ -405,11 +406,9 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
                     s.reverse();
                     Ok(NodePos(Node::Const(S(&s)), pos))
                 }
-                _ => panic!("stringify of non-int"),
+                v => anyhow::bail!("Token {}: stringify of non-int: {:#}", pos, v),
             },
-            op => {
-                panic!("unknown op: {}", *op as char);
-            }
+            op => anyhow::bail!("Token {}: unknown unary op: {}", pos, *op as char),
         },
         Node::Binary { op, v1, v2 } => match op {
             b'+' => {
@@ -420,7 +419,9 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
                         NodePos(Node::Const(Value::Int(a)), _),
                         NodePos(Node::Const(Value::Int(b)), _),
                     ) => Ok(NodePos(Node::Const(Value::Int(a + b)), pos)),
-                    _ => panic!("addition of non-int"),
+                    (a, b) => {
+                        anyhow::bail!("Token {}: addition of non-int: {:#} + {:#}", pos, a, b)
+                    }
                 }
             }
             b'-' => {
@@ -431,7 +432,9 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
                         NodePos(Node::Const(Value::Int(a)), _),
                         NodePos(Node::Const(Value::Int(b)), _),
                     ) => Ok(NodePos(Node::Const(Value::Int(a - b)), pos)),
-                    _ => panic!("subtraction of non-int"),
+                    (a, b) => {
+                        anyhow::bail!("Token {}: subtraction of non-int: {:#} - {:#}", pos, a, b)
+                    }
                 }
             }
             b'*' => {
@@ -442,7 +445,12 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
                         NodePos(Node::Const(Value::Int(a)), _),
                         NodePos(Node::Const(Value::Int(b)), _),
                     ) => Ok(NodePos(Node::Const(Value::Int(a * b)), pos)),
-                    _ => panic!("multiplication of non-int"),
+                    (a, b) => anyhow::bail!(
+                        "Token {}: multiplication of non-int: {:#} * {:#}",
+                        pos,
+                        a,
+                        b
+                    ),
                 }
             }
             b'/' => {
@@ -453,7 +461,9 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
                         NodePos(Node::Const(Value::Int(a)), _),
                         NodePos(Node::Const(Value::Int(b)), _),
                     ) => Ok(NodePos(Node::Const(Value::Int(a / b)), pos)),
-                    _ => panic!("division of non-int"),
+                    (a, b) => {
+                        anyhow::bail!("Token {}: division of non-int: {:#} / {:#}", pos, a, b)
+                    }
                 }
             }
             b'%' => {
@@ -464,7 +474,9 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
                         NodePos(Node::Const(Value::Int(a)), _),
                         NodePos(Node::Const(Value::Int(b)), _),
                     ) => Ok(NodePos(Node::Const(Value::Int(a % b)), pos)),
-                    _ => panic!("modulo of non-int"),
+                    (a, b) => {
+                        anyhow::bail!("Token {}: modulo of non-int: {:#} % {:#}", pos, a, b)
+                    }
                 }
             }
             b'<' => {
@@ -475,7 +487,9 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
                         NodePos(Node::Const(Value::Int(a)), _),
                         NodePos(Node::Const(Value::Int(b)), _),
                     ) => Ok(NodePos(Node::Const(Value::Bool(a < b)), pos)),
-                    _ => panic!("comparison of non-int"),
+                    (a, b) => {
+                        anyhow::bail!("Token {}: comparison of non-int: {:#} < {:#}", pos, a, b)
+                    }
                 }
             }
             b'>' => {
@@ -486,7 +500,9 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
                         NodePos(Node::Const(Value::Int(a)), _),
                         NodePos(Node::Const(Value::Int(b)), _),
                     ) => Ok(NodePos(Node::Const(Value::Bool(a > b)), pos)),
-                    _ => panic!("comparison of non-int"),
+                    (a, b) => {
+                        anyhow::bail!("Token {}: comparison of non-int: {:#} > {:#}", pos, a, b)
+                    }
                 }
             }
             b'=' => {
@@ -505,7 +521,12 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
                         NodePos(Node::Const(Value::Str(a)), _),
                         NodePos(Node::Const(Value::Str(b)), _),
                     ) => Ok(NodePos(Node::Const(Value::Bool(a == b)), pos)),
-                    _ => panic!("comparison of different types"),
+                    (a, b) => anyhow::bail!(
+                        "Token {}: comparison of different types: {:#} = {:#}",
+                        pos,
+                        a,
+                        b
+                    ),
                 }
             }
             b'|' => {
@@ -516,7 +537,9 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
                         NodePos(Node::Const(Value::Bool(a)), _),
                         NodePos(Node::Const(Value::Bool(b)), _),
                     ) => Ok(NodePos(Node::Const(Value::Bool(a || b)), pos)),
-                    _ => panic!("or of non-bool"),
+                    (a, b) => {
+                        anyhow::bail!("Token {}: or of non-bool: {:#} | {:#}", pos, a, b)
+                    }
                 }
             }
             b'&' => {
@@ -527,7 +550,9 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
                         NodePos(Node::Const(Value::Bool(a)), _),
                         NodePos(Node::Const(Value::Bool(b)), _),
                     ) => Ok(NodePos(Node::Const(Value::Bool(a && b)), pos)),
-                    _ => panic!("or of non-bool"),
+                    (a, b) => {
+                        anyhow::bail!("Token {}: and of non-bool: {:#} & {:#}", pos, a, b)
+                    }
                 }
             }
             b'.' => {
@@ -541,7 +566,9 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
                         a.extend_from_slice(&b);
                         Ok(NodePos(Node::Const(Value::Str(a)), pos))
                     }
-                    _ => panic!("concat of non-str"),
+                    (a, b) => {
+                        anyhow::bail!("Token {}: concat of non-str: {:#} . {:#}", pos, a, b)
+                    }
                 }
             }
             b'T' => {
@@ -555,7 +582,12 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
                         let a: usize = a.try_into().unwrap();
                         Ok(NodePos(Node::Const(Value::Str(b[..a].to_vec())), pos))
                     }
-                    _ => panic!("take of non-int or non-str"),
+                    (a, b) => anyhow::bail!(
+                        "Token {}: take of non-int or non-str: {:#} T {:#}",
+                        pos,
+                        a,
+                        b
+                    ),
                 }
             }
             b'D' => {
@@ -569,7 +601,12 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
                         let a: usize = a.try_into().unwrap();
                         Ok(NodePos(Node::Const(Value::Str(b[a..].to_vec())), pos))
                     }
-                    _ => panic!("drop of non-int or non-str"),
+                    (a, b) => anyhow::bail!(
+                        "Token {}: drop of non-int or non-str: {:#} D {:#}",
+                        pos,
+                        a,
+                        b
+                    ),
                 }
             }
             b'$' => {
@@ -578,12 +615,16 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
                     NodePos(Node::Lambda { var, exp }, _) => {
                         *count += 1;
                         if *count > 10_000_000 {
-                            panic!("beta reductions limit exceeded");
+                            anyhow::bail!(
+                                "Token {}: beta reductions limit exceeded: {:#}",
+                                pos,
+                                exp
+                            );
                         }
                         let v = subst(&exp, &var, v2.clone(), 0)?;
                         rec(&v, count)
                     }
-                    _ => panic!("apply of non-lambda"),
+                    v => anyhow::bail!("Token {}: apply of non-lambda: {:#}", pos, v),
                 }
             }
             b'!' => {
@@ -594,12 +635,16 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
                         let b = rec(&v2, count)?;
                         *count += 1;
                         if *count > 10_000_000 {
-                            panic!("beta reductions limit exceeded");
+                            anyhow::bail!(
+                                "Token {}: beta reductions limit exceeded: {:#}",
+                                pos,
+                                exp
+                            );
                         }
                         let v = subst(&exp, &var, Rc::new(b), 0)?;
                         rec(&v, count)
                     }
-                    _ => panic!("apply of non-lambda"),
+                    v => anyhow::bail!("Token {}: apply of non-lambda: {:#}", pos, v),
                 }
             }
             b'~' => {
@@ -609,26 +654,28 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
                     NodePos(Node::Lambda { var, exp }, _) => {
                         *count += 1;
                         if *count > 10_000_000 {
-                            panic!("beta reductions limit exceeded");
+                            anyhow::bail!(
+                                "Token {}: beta reductions limit exceeded: {:#}",
+                                pos,
+                                exp
+                            );
                         }
                         let v2: NodePos = (**v2).clone();
                         let v2 = NodePos(thunk(v2), pos);
                         let v = subst(&exp, &var, Rc::new(v2), 0)?;
                         rec(&v, count)
                     }
-                    _ => panic!("apply of non-lambda"),
+                    v => anyhow::bail!("Token {}: apply of non-lambda: {:#}", pos, v),
                 }
             }
-            op => {
-                panic!("unknown op: {}", *op as char);
-            }
+            op => anyhow::bail!("Token {}: unknown binary op: {}", pos, *op as char),
         },
         Node::If { cond, v1, v2 } => {
             let cond = rec(&cond, count)?;
             match cond {
                 NodePos(Node::Const(Value::Bool(true)), _) => rec(&v1, count),
                 NodePos(Node::Const(Value::Bool(false)), _) => rec(&v2, count),
-                _ => panic!("condition is not bool"),
+                v => anyhow::bail!("Token {}: condition is not bool: {:#}", pos, v),
             }
         }
         Node::Lambda { var, exp } => Ok(NodePos(
