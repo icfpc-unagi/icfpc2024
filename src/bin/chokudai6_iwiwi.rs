@@ -32,55 +32,88 @@ type Board = Vec<Vec<char>>;
 const DIJ: [(usize, usize); 4] = [(0, 1), (1, 0), (0, !0), (!0, 0)];
 const DIR: [char; 4] = ['R', 'D', 'L', 'U'];
 
-fn gen1(problem_id: i64, x0: i64, a: i64, c: i64, m: i64, xt: i64) -> String {
-    if c != 0 {
-        return format!(
-            r##"
-    B.
-        "solve lambdaman{problem_id} "
-        B$
+fn gen(problem_id: i64, x0: i64, a: i64, c: i64, m: i64, xt: i64, step: i32) -> String {
+    if step == 1 {
+        if c != 0 {
+            return format!(
+                r##"
+        B.
+            "solve lambdaman{problem_id} "
             B$
-                Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
-                Lf Lx
-                ?
-                    B= vx {xt}
-                    ""
-                    B.
-                        BT 1 BD B% vx 4 "RDLU"
-                        B$ vf
-                            B%
-                                B+
+                B$
+                    Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
+                    Lf Lx
+                    ?
+                        B= vx {xt}
+                        ""
+                        B.
+                            BT 1 BD B% vx 4 "RDLU"
+                            B$ vf
+                                B%
+                                    B+
+                                        B*
+                                            vx
+                                            {a}
+                                        {c}
+                                    {m}
+            {x0}
+        "##
+            );
+        } else {
+            return format!(
+                r##"
+        B.
+            "solve lambdaman{problem_id} "
+            B$
+                B$
+                    Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
+                    Lf Lx
+                    ?
+                        B= vx {xt}
+                        ""
+                        B.
+                            BT 1 BD B% vx 4 "RDLU"
+                            B$ vf
+                                B%
                                     B*
                                         vx
                                         {a}
-                                    {c}
-                                {m}
-        {x0}
-    "##
-        );
-    } else {
-        return format!(
-            r##"
-    B.
-        "solve lambdaman{problem_id} "
-        B$
+                                    {m}
+            {x0}
+        "##
+            );
+        }
+    } else if step == 2 {
+        if c != 0 {
+            return format!(
+                r##"
+        B.
+            "solve lambdaman{problem_id} "
             B$
-                Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
-                Lf Lx
-                ?
-                    B= vx {xt}
-                    ""
-                    B.
-                        BT 1 BD B% vx 4 "RDLU"
-                        B$ vf
-                            B%
-                                B*
-                                    vx
-                                    {a}
-                                {m}
-        {x0}
-    "##
-        );
+                B$
+                    Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
+                    Lf Lx
+                    ?
+                        B= vx {xt}
+                        ""
+                        B.
+                            BT 2 BD B% B* vx 2 8 "RRDDLLUU"
+                            B$ vf
+                                B%
+                                    B+
+                                        B*
+                                            vx
+                                            {a}
+                                        {c}
+                                    {m}
+            {x0}
+        "##
+            );
+        } else {
+            panic!()
+        }
+    } else {
+        panic!()
     }
 }
 
@@ -163,6 +196,13 @@ fn solve2(problem_id: usize, input: &Input, step: i32, first_mod: usize, use_c: 
             let (remain_pos, last_turn) =
                 solve3(a, b, c, start_id, d, step as usize, &next, modulo);
 
+            // 最小値を更新
+            let mut best = best_result.lock().unwrap();
+            if remain_pos < best.0 {
+                *best = (remain_pos, a, b, c);
+                println!("  NowBest: {} at i: {} {}", best.0, best.1, challenge);
+            }
+
             // もしsolve(i)が0ならば即終了 → そう甘くない！lastの0が0になるまで終了しない
             if remain_pos == 0 {
                 let last = getLastA(a, b, c, step as usize, modulo, last_turn);
@@ -171,13 +211,14 @@ fn solve2(problem_id: usize, input: &Input, step: i32, first_mod: usize, use_c: 
                     if last[i] == !0 {
                         continue;
                     }
-                    let program = gen1(
+                    let program = gen(
                         problem_id as i64,
                         a as i64,
                         b as i64,
                         c as i64,
                         modulo as i64,
                         last[i] as i64,
+                        step,
                     );
                     eprintln!("--------------------------------------------------------------------------------");
                     println!("a : {}", a);
@@ -205,13 +246,6 @@ fn solve2(problem_id: usize, input: &Input, step: i32, first_mod: usize, use_c: 
 
             challenge.add(1);
 
-            // 最小値を更新
-            let mut best = best_result.lock().unwrap();
-            if remain_pos < best.0 {
-                *best = (remain_pos, a, b, c);
-
-                println!("  NowBest: {} at i: {} {}", best.0, best.1, challenge);
-            }
         });
 
         if best_result.lock().unwrap().0 == 0 {
@@ -335,11 +369,14 @@ fn solve3(
         }
         r %= 4;
         */
-        let r = a % (4 * step);
+
+        //let r = a % (4 * step);
+        let r = a % 4;
         a = (a * b + c) % modulo;
 
         for k in 0..step {
-            now = next[now][(r + k) / step % 4 as usize];
+            //now = next[now][(r + k) / step % 4 as usize];
+            now = next[now][r as usize];
 
             if !visited[now] {
                 remain_pos -= 1;
