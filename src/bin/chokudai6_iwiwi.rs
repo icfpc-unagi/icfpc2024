@@ -238,7 +238,7 @@ fn solve2(problem_id: usize, input: &Input, step: i32, first_mod: usize, use_c: 
             }
         }
         range.shuffle(&mut rng);
-        // let range: Vec<_> = range.iter().take(1000).collect();
+        let range: Vec<_> = range.into_iter().take(10000).collect();
 
         range.into_par_iter().for_each(|i| {
             if best_result.lock().unwrap().0 == 0 {
