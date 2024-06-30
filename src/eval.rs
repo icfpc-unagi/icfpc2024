@@ -67,7 +67,14 @@ impl std::fmt::Display for Node {
                     'D' => Some("drop"),
                     _ => None,
                 } {
-                    return write!(f, "({} {} {})", fullname, v1, v2);
+                    return if f.alternate() {
+                        write!(f, "({} {:#} {:#})", fullname, v1, v2)
+                    } else {
+                        write!(f, "({} {} {})", fullname, v1, v2)
+                    };
+                }
+                if f.alternate() {
+                    write!(f, "({:#} {} {:#})", v1, op, v2)
                 } else {
                     write!(f, "({} {} {})", v1, op, v2)
                 }
@@ -85,7 +92,7 @@ impl std::fmt::Display for Node {
 impl std::fmt::Display for NodePos {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if f.alternate() {
-            write!(f, "{}:{}", self.0, self.1)
+            write!(f, "{:#}:{}", self.0, self.1)
         } else {
             write!(f, "{}", self.0)
         }
@@ -112,23 +119,24 @@ pub fn parse(
     if tokens.len() <= *p {
         anyhow::bail!("Token after {}: unexpected end of input", tokens[*p - 1].0);
     }
+    let pos: usize = tokens[*p].0;
     let id = tokens[*p].1[0];
     let body = &tokens[*p].1[1..];
     *p += 1;
     match id {
         b'T' => match body.len() {
-            0 => Ok(NodePos(Node::Const(Value::Bool(true)), tokens[*p - 1].0)),
+            0 => Ok(NodePos(Node::Const(Value::Bool(true)), pos)),
             _ => anyhow::bail!(
                 "Token at {}: T needs no argument, but: {}",
-                tokens[*p - 1].0,
+                pos,
                 body.iter().map(|&b| b as char).collect::<String>()
             ),
         },
         b'F' => match body.len() {
-            0 => Ok(NodePos(Node::Const(Value::Bool(false)), tokens[*p - 1].0)),
+            0 => Ok(NodePos(Node::Const(Value::Bool(false)), pos)),
             _ => anyhow::bail!(
                 "Token at {}: F needs no argument, but: {}",
-                tokens[*p - 1].0,
+                pos,
                 body.iter().map(|&b| b as char).collect::<String>()
             ),
         },
@@ -137,27 +145,23 @@ pub fn parse(
             for (i, &b) in body.iter().enumerate() {
                 match b {
                     b'!'..=b'~' => val = val * 94 + (b - 33),
-                    _ => anyhow::bail!(
-                        "Token at {}: invalid character in integer at {}",
-                        tokens[*p - 1].0,
-                        i
-                    ),
+                    _ => anyhow::bail!("Token at {}: invalid character in integer at {}", pos, i),
                 }
             }
-            Ok(NodePos(Node::Const(Value::Int(val)), tokens[*p - 1].0))
+            Ok(NodePos(Node::Const(Value::Int(val)), pos))
         }
-        b'S' => Ok(NodePos(Node::Const(S(body)), tokens[*p - 1].0)),
+        b'S' => Ok(NodePos(Node::Const(S(body)), pos)),
         b'U' => match body.len() {
             1 => Ok(NodePos(
                 Node::Unary {
                     op: body[0],
                     v: Rc::new(parse(tokens, p, binders)?),
                 },
-                tokens[*p - 1].0,
+                pos,
             )),
             _ => anyhow::bail!(
                 "Token at {}: U takes exactly one argument, but: {}",
-                tokens[*p - 1].0,
+                pos,
                 body.iter().map(|&b| b as char).collect::<String>()
             ),
         },
@@ -168,11 +172,11 @@ pub fn parse(
                     v1: Rc::new(parse(tokens, p, binders)?),
                     v2: Rc::new(parse(tokens, p, binders)?),
                 },
-                tokens[*p - 1].0,
+                pos,
             )),
             _ => anyhow::bail!(
                 "Token at {}: B takes exactly two arguments, but: {}",
-                tokens[*p - 1].0,
+                pos,
                 body.iter().map(|&b| b as char).collect::<String>()
             ),
         },
@@ -183,11 +187,11 @@ pub fn parse(
                     v1: Rc::new(parse(tokens, p, binders)?),
                     v2: Rc::new(parse(tokens, p, binders)?),
                 },
-                tokens[*p - 1].0,
+                pos,
             )),
             _ => anyhow::bail!(
                 "Token at {}: ? takes no arguments, but: {}",
-                tokens[*p - 1].0,
+                pos,
                 body.iter().map(|&b| b as char).collect::<String>()
             ),
         },
@@ -198,7 +202,7 @@ pub fn parse(
                     b'!'..=b'~' => var = var * 94 + (b - 33),
                     _ => anyhow::bail!(
                         "Token at {}: invalid character '{}' in lambda argument at {}",
-                        tokens[*p - 1].0,
+                        pos,
                         b as char,
                         i
                     ),
@@ -219,20 +223,16 @@ pub fn parse(
                     b'!'..=b'~' => var = var * 94 + (b - 33),
                     _ => anyhow::bail!(
                         "Token at {}: invalid character '{}' in variable at {}",
-                        tokens[*p - 1].0,
+                        pos,
                         b as char,
                         i
                     ),
                 }
             }
             let de_bruijn_index = binders.iter().rev().position(|b| b == &var);
-            Ok(NodePos(Node::Var(var, de_bruijn_index), tokens[*p - 1].0))
+            Ok(NodePos(Node::Var(var, de_bruijn_index), pos))
         }
-        id => anyhow::bail!(
-            "Token at {}: unknown token: {}",
-            tokens[*p - 1].0,
-            id as char
-        ),
+        id => anyhow::bail!("Token at {}: unknown token: {}", pos, id as char),
     }
 }
 
@@ -736,7 +736,7 @@ fn eval_to_node(s: &str) -> anyhow::Result<NodePos> {
 
 pub fn eval(s: &str) -> anyhow::Result<Value> {
     match eval_to_node(s)? {
-        NodePos(Node::Const(val), _) => Ok(val),
+        NodePos(Node::Const(val), pos) => Ok(val),
         v => anyhow::bail!("Non-const result: {}", v),
     }
 }
@@ -863,7 +863,7 @@ fn test_position() {
     // 値はそのポジションをとるべき
     assert_eq!(eval_to_node("I0").unwrap().1, 0);
     // 計算結果は計算結果の位置になって欲しい
-    // assert_eq!(eval_to_node("B+ I0 I0").unwrap().1, 0);
+    assert_eq!(eval_to_node("B+ I0 I0").unwrap().1, 0);
 }
 
 #[test]
@@ -881,16 +881,16 @@ fn test_errors() {
     // 文字列演算ができないパターン
     assert_eq!(
         format!("{}", eval_to_node("B. I0 S").unwrap_err()),
-        r#"Token 6: concat of non-str: 15:3 . "":6"#,
+        r#"Token 0: concat of non-str: 15:3 . "":6"#,
     );
     // 整数演算ができないパターン
     assert_eq!(
         format!("{}", eval_to_node("B+ I0 S").unwrap_err()),
-        r#"Token 6: addition of non-int: 15:3 + "":6"#,
+        r#"Token 0: addition of non-int: 15:3 + "":6"#,
     );
     // 計算結果の演算ができないパターン
-    // assert_eq!(
-    //     format!("{}", eval_to_node("B+ I0 B. S0 S1").unwrap_err()),
-    //     r#"Token 12: addition of non-int: 15:3 + "pq":6"#,
-    // );
+    assert_eq!(
+        format!("{}", eval_to_node("B+ I0 B. S0 S1").unwrap_err()),
+        r#"Token 0: addition of non-int: 15:3 + "pq":6"#,
+    );
 }
