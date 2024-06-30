@@ -589,7 +589,7 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
                         NodePos(Node::Const(Value::Str(b)), _),
                     ) => {
                         let a: usize = a.try_into().unwrap();
-                        Ok(NodePos(Node::Const(Value::Str(b[..a].to_vec())), pos))
+                        Ok(NodePos(Node::Const(Value::Str(b[..a.min(b.len())].to_vec())), pos))
                     }
                     (a, b) => anyhow::bail!(
                         "Token {}: take of non-int or non-str: {:#} T {:#}",
@@ -608,7 +608,7 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
                         NodePos(Node::Const(Value::Str(b)), _),
                     ) => {
                         let a: usize = a.try_into().unwrap();
-                        Ok(NodePos(Node::Const(Value::Str(b[a..].to_vec())), pos))
+                        Ok(NodePos(Node::Const(Value::Str(b[a.min(b.len())..].to_vec())), pos))
                     }
                     (a, b) => anyhow::bail!(
                         "Token {}: drop of non-int or non-str: {:#} D {:#}",
