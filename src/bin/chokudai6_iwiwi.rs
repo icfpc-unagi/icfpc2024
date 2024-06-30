@@ -32,7 +32,7 @@ type Board = Vec<Vec<char>>;
 const DIJ: [(usize, usize); 4] = [(0, 1), (1, 0), (0, !0), (!0, 0)];
 const DIR: [char; 4] = ['R', 'D', 'L', 'U'];
 
-fn solve2(input: &Input, step: i32, first_mod: usize) -> i32 {
+fn solve2(input: &Input, step: i32, first_mod: usize, use_c: bool) -> i32 {
     let n = input.board.len();
     let m = input.board[0].len();
     let mut id = vec![!0; n * m];
@@ -71,33 +71,38 @@ fn solve2(input: &Input, step: i32, first_mod: usize) -> i32 {
     //let range = 0..=1 << (2 * prime.len());
 
     // 並列処理の結果を保存するためのMutexを用意します。
-    let best_result = Mutex::new((9999999, 99999999)); // (solve(i), i)
+    let best_result = Mutex::new((9999999, !(0 as usize), !(0 as usize), !(0 as usize))); // (solve(i), i)
     let challenge = Mutex::new(1); //
 
     let mut challenge = 0;
 
     let mut modulo = first_mod;
+    let mut rng = thread_rng();
 
     loop {
         eprintln!("now modulo: {}", modulo);
 
         //let range = 0..(93 * 93 * 93);
-        let range = 0..1000;
+
+        let mut range: Vec<u64> = (0..(93 * 93 * 93)).collect();
+        range.shuffle(&mut rng);
+        let range: Vec<_> = range.iter().take(10000).collect();
+
         range.into_par_iter().for_each(|i| {
             if best_result.lock().unwrap().0 == 0 {
                 return;
             }
-            let ii = ((i as u64 * 123456711) % (93 * 93 * 93)) as usize;
-            // let ii = i;
+            // let ii = ((i as u64 * 123456711) % (93 * 93 * 93)) as usize;
+            let ii = *i as usize;
+            let a = ii / 93 / 93 + 1;
+            let b = ii / 93 % 93 + 1;
+            let c = if use_c { ii % 93 + 1 } else { 0 };
 
-            let result = solve3(ii, start_id, d, step as usize, &next, modulo);
+            let result = solve3(a, b, c, start_id, d, step as usize, &next, modulo);
 
             // もしsolve(i)が0ならば即終了
             if result.0 == 0 {
                 let last_turn = result.1;
-                let a = ii / 93 / 93 + 1;
-                let b = ii / 93 % 93 + 1;
-                let c = ii % 93 + 1;
                 let last = getLastA(a, b, c, step as usize, modulo, last_turn);
                 if last[3] == !0 {
                     eprintln!("endpoint is not found");
@@ -105,7 +110,7 @@ fn solve2(input: &Input, step: i32, first_mod: usize) -> i32 {
                 }
 
                 let mut best = best_result.lock().unwrap();
-                *best = (result.0, ii);
+                *best = (result.0, a, b, c);
                 println!("found!");
                 return;
             }
@@ -115,7 +120,7 @@ fn solve2(input: &Input, step: i32, first_mod: usize) -> i32 {
             // 最小値を更新
             let mut best = best_result.lock().unwrap();
             if result.0 < best.0 {
-                *best = (result.0, ii);
+                *best = (result.0, a, b, c);
 
                 println!("  NowBest: {} at i: {} {}", best.0, best.1, challenge);
             }
@@ -143,9 +148,9 @@ fn solve2(input: &Input, step: i32, first_mod: usize) -> i32 {
     let best_result = best_result.lock().unwrap();
     if best_result.0 == 0 {
         println!("OK : {}", best_result.1);
-        let a = best_result.1 / 93 / 93 + 1;
-        let b = best_result.1 / 93 % 93 + 1;
-        let c = best_result.1 % 93 + 1;
+        let a = best_result.1;
+        let b = best_result.2;
+        let c = best_result.3;
         println!("a : {}", a);
         println!("b : {}", b);
         println!("c : {}", c);
@@ -170,7 +175,9 @@ fn solve2(input: &Input, step: i32, first_mod: usize) -> i32 {
 }
 
 fn solve3(
-    bit: usize,
+    mut a: usize,
+    b: usize,
+    c: usize,
     start_id: usize,
     d: usize,
     step: usize,
@@ -199,9 +206,6 @@ fn solve3(
 
     let limit_turn = 999998 / step;
 
-    let c = bit % 93 + 1;
-    let b = bit / 93 % 93 + 1;
-    let mut a = bit / 93 / 93 % 93 + 1;
     if a <= 1 {
         return (remain_pos, 0);
     }
@@ -265,16 +269,16 @@ fn main() {
         1000003
     };
 
-    solve(id, step, modulo);
+    solve(id, step, modulo, false);
 }
 
-fn solve(i: usize, step: usize, first_mod: usize) {
+fn solve(i: usize, step: usize, first_mod: usize, use_c: bool) {
     let filename = format!("input/lambdaman/lambdaman{}.txt", i);
     let input = read_input_from_file(filename);
     _ = get_time(true);
 
     eprintln!("Test case {}", i);
-    let moves = solve2(&input, step as i32, first_mod);
+    let moves = solve2(&input, step as i32, first_mod, use_c);
 }
 
 fn decode(c: char) -> char {
