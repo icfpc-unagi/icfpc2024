@@ -222,12 +222,12 @@ fn solve3(
         }
         r %= 4;
         */
-        let r = a % 4;
+        let r = a % (4 * step);
 
         a = (a * b) % modulo;
 
         for k in 0..step {
-            now = next[now][r as usize];
+            now = next[now][(r + k) / step % 4 as usize];
 
             if !visited[now] {
                 remain_pos -= 1;
