@@ -32,7 +32,7 @@ num-traits = "0.2"
 num = { version = "0.4.3", features = ["num-bigint"] }
 
 rand = { version = "=0.8.5", features = ["small_rng", "min_const_gen"] }
-getrandom = "=0.2.10"
+getrandom = { version = "=0.2.10", features = ["js"] }
 rand_chacha = "=0.3.1"
 rand_core = "=0.6.4"
 rand_hc = "=0.3.2"
