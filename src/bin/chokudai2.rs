@@ -13,6 +13,7 @@ use rayon::prelude::*;
 use resvg::usvg::filter::Turbulence;
 use std::char::MAX;
 use std::env;
+use std::f32::consts::E;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::ops::Add;
@@ -29,7 +30,7 @@ type Board = Vec<Vec<char>>;
 const DIJ: [(usize, usize); 4] = [(0, 1), (1, 0), (0, !0), (!0, 0)];
 const DIR: [char; 4] = ['R', 'D', 'L', 'U'];
 
-fn solve2(input: &Input, step: i32) -> i32 {
+fn solve2(input: &Input, step: i32, first_mod: usize) -> i32 {
     let n = input.board.len();
     let m = input.board[0].len();
     let mut id = vec![!0; n * m];
@@ -66,7 +67,6 @@ fn solve2(input: &Input, step: i32) -> i32 {
 
     //let prime = vec![1, 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41];
     //let range = 0..=1 << (2 * prime.len());
-    let range = 0..(93 * 93 * 93);
 
     // 並列処理の結果を保存するためのMutexを用意します。
     let best_result = Mutex::new((9999999, 99999999)); // (solve(i), i)
@@ -74,32 +74,57 @@ fn solve2(input: &Input, step: i32) -> i32 {
 
     let mut challenge = 0;
 
-    range.into_par_iter().for_each(|i| {
-        if best_result.lock().unwrap().0 == 0 {
-            return;
-        }
-        let ii = ((i as u64 * 123456711) % (93 * 93 * 93)) as usize;
+    let mut modulo = first_mod;
 
-        let result = solve3(ii, start_id, d, step as usize, &next);
+    loop {
+        eprintln!("now modulo: {}", modulo);
 
-        // もしsolve(i)が0ならば即終了
-        if result == 0 {
+        let range = 0..(93 * 93 * 93);
+        range.into_par_iter().for_each(|i| {
+            if best_result.lock().unwrap().0 == 0 {
+                return;
+            }
+            let ii = ((i as u64 * 123456711) % (93 * 93 * 93)) as usize;
+
+            let result = solve3(ii, start_id, d, step as usize, &next, modulo);
+
+            // もしsolve(i)が0ならば即終了
+            if result == 0 {
+                let mut best = best_result.lock().unwrap();
+                *best = (result, ii);
+                println!("found!");
+                return;
+            }
+
+            challenge.add(1);
+
+            // 最小値を更新
             let mut best = best_result.lock().unwrap();
-            *best = (result, ii);
-            println!("found!");
-            return;
+            if result < best.0 {
+                *best = (result, ii);
+
+                println!("  NowBest: {} at i: {} {}", best.0, best.1, challenge);
+            }
+        });
+
+        if best_result.lock().unwrap().0 == 0 {
+            break;
+        } else {
+            loop {
+                modulo += 1;
+                let mut is_prime = true;
+                for div in 2..modulo {
+                    if modulo % div == 0 {
+                        is_prime = false;
+                        break;
+                    }
+                }
+                if is_prime {
+                    break;
+                }
+            }
         }
-
-        challenge.add(1);
-
-        // 最小値を更新
-        let mut best = best_result.lock().unwrap();
-        if result < best.0 {
-            *best = (result, ii);
-
-            println!("  NowBest: {} at i: {} {}", best.0, best.1, challenge);
-        }
-    });
+    }
 
     let best_result = best_result.lock().unwrap();
     if best_result.0 == 0 {
@@ -110,6 +135,7 @@ fn solve2(input: &Input, step: i32) -> i32 {
         println!("a : {}", a);
         println!("b : {}", b);
         println!("c : {}", c);
+        println!("mod : {}", modulo);
         let last = getLastA(a, b, c, step as usize);
         println!("last : {} {} {} {}", last[0], last[1], last[2], last[3]);
         /*
@@ -129,7 +155,14 @@ fn solve2(input: &Input, step: i32) -> i32 {
     return 0;
 }
 
-fn solve3(bit: usize, start_id: usize, d: usize, step: usize, next: &Vec<Vec<usize>>) -> usize {
+fn solve3(
+    bit: usize,
+    start_id: usize,
+    d: usize,
+    step: usize,
+    next: &Vec<Vec<usize>>,
+    modulo: usize,
+) -> usize {
     //let prime = vec![1, 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31];
     let mut visited = vec![false; d];
     let mut loopflag = vec![false; d];
@@ -180,7 +213,7 @@ fn solve3(bit: usize, start_id: usize, d: usize, step: usize, next: &Vec<Vec<usi
         r %= 4;
         */
         let r = a % 4;
-        a = (a * b + c) % 1000003;
+        a = (a * b + c) % modulo;
 
         for k in 0..step {
             now = next[now][r as usize];
@@ -212,17 +245,22 @@ fn main() {
 
     let id: usize = args[1].parse().expect("ID should be an integer");
     let step: usize = args[2].parse().expect("Step should be an integer");
+    let modulo: usize = if args.len() > 3 {
+        args[3].parse().expect("Modulo should be an integer")
+    } else {
+        1000003
+    };
 
-    solve(id, step);
+    solve(id, step, modulo);
 }
 
-fn solve(i: usize, step: usize) {
+fn solve(i: usize, step: usize, first_mod: usize) {
     let filename = format!("input/lambdaman/lambdaman{}.txt", i);
     let input = read_input_from_file(filename);
     _ = get_time(true);
 
     eprintln!("Test case {}", i);
-    let moves = solve2(&input, step as i32);
+    let moves = solve2(&input, step as i32, first_mod);
 }
 
 fn decode(c: char) -> char {
