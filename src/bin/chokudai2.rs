@@ -138,6 +138,10 @@ fn solve3(bit: usize, start_id: usize, d: usize, step: usize, next: &Vec<Vec<usi
 
     let limit_turn = 999998 / step;
 
+    let c = bit % 1024;
+    let b = bit / 1024 % 1024;
+    let mut a = bit / 1024 / 1024 % 1024 + 1;
+
     for turn in 0..limit_turn {
         let rt = limit_turn - turn;
 
@@ -148,12 +152,16 @@ fn solve3(bit: usize, start_id: usize, d: usize, step: usize, next: &Vec<Vec<usi
             loopflag[now] = true;
         }
 
+        /*
         let mut r = 0;
         for p in 0..prime.len() {
             let mul = ((bit as i32 >> (p * 2)) % 4) as usize;
             r += (rt / prime[p]) * mul % 4;
         }
         r %= 4;
+        */
+        let r = a % 4;
+        a = (a * b + c) % 1000003;
 
         for k in 0..step {
             now = next[now][r as usize];
@@ -196,7 +204,7 @@ fn main() {
 fn main2() {
     const STACK_SIZE: usize = 16 * 1024 * 1024; // 512 MB
 
-    for i in 11..22 {
+    for i in 18..22 {
         solve(i);
     }
 }
@@ -207,7 +215,7 @@ fn solve(i: usize) {
     _ = get_time(true);
 
     eprintln!("Test case {}", i);
-    let moves = solve2(&input, 2);
+    let moves = solve2(&input, 1);
     if moves == 0 {
         //let moves = solve2(&input, 2);
     }
