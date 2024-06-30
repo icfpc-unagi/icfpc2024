@@ -5,7 +5,7 @@ use rand::prelude::*;
 use rustc_hash::FxHashSet;
 use solution::*;
 
-const TL: f64 = 600.0;
+const TL: f64 = 6.0 * 3600.0;
 
 fn get_order(input: &Input) -> Vec<usize> {
     if let Ok(best) = std::env::var("BEST") {
@@ -77,9 +77,11 @@ fn get_order(input: &Input) -> Vec<usize> {
 fn main() {
     get_time();
     let input = read_input();
+    if input.ps.len() > 1000 {
+        return;
+    }
     let order = get_order(&input);
     let mut beam = vec![State {
-        visited: vec![false; input.ps.len()],
         p: (0, 0),
         v: (0, 0),
         t: 0,
@@ -114,7 +116,7 @@ fn main() {
                 }
                 T += 1;
             }
-            for _ in 0..2 {
+            for _ in 0..3 {
                 let dx = input.ps[i].0 - state.p.0;
                 let dy = input.ps[i].1 - state.p.1;
                 if state.v.0 * T - T * (T + 1) / 2 <= dx && dx <= state.v.0 * T + T * (T + 1) / 2 {
@@ -161,10 +163,7 @@ fn main() {
                                 for mv in tmp {
                                     id = trace.add(mv, id);
                                 }
-                                let mut visited = state.visited.clone();
-                                visited[i] = true;
                                 next.push(State {
-                                    visited,
                                     p,
                                     v,
                                     t: state.t + T,
@@ -185,7 +184,7 @@ fn main() {
         beam = vec![];
         let mut used = FxHashSet::default();
         for s in next {
-            let h = (s.visited.clone(), s.p, s.v);
+            let h = s.v;
             if used.contains(&h) {
                 continue;
             }
@@ -210,7 +209,6 @@ fn main() {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 struct State {
-    visited: Vec<bool>,
     p: (i64, i64),
     v: (i64, i64),
     t: i64,
