@@ -12,17 +12,18 @@ pub fn preprocess(s: &str) -> anyhow::Result<String> {
     let mut in_string = false;
     let mut escape = false;
     for c in chars {
-        if escape {
+        if in_string && escape {
             new_token.push(c);
             escape = false;
-        } else if c == '\\' {
+        } else if in_string && c == '\\' {
             escape = true;
-        } else if c == '"' {
-            in_string = !in_string;
+        } else if in_string && c == '"' {
+            in_string = false;
             new_token.push(c);
-        } else if in_string {
+        } else if !in_string && new_token.is_empty() && c == '"' {
+            in_string = true;
             new_token.push(c);
-        } else if c.is_whitespace() {
+        } else if !in_string && c.is_whitespace() {
             if !new_token.is_empty() {
                 tokens.push(new_token.clone());
                 new_token.clear();
@@ -53,6 +54,10 @@ mod tests {
     fn test_preprocess() -> anyhow::Result<()> {
         assert_eq!(preprocess("1_000")?, "I+]");
         assert_eq!(preprocess(r#"a  "x y  z"  b"#)?, "a S8}9}}: b");
+        assert_eq!(
+            preprocess(r#"B$  L#  B$  L"  B+  v"  v"  B*  I$  I#  v8"#)?,
+            r#"B$ L# B$ L" B+ v" v" B* I$ I# v8"#,
+        );
         assert_eq!(
             preprocess(
                 r#"
