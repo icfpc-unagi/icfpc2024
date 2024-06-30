@@ -1,4 +1,1 @@
 Correct, you solved lambdaman5 with a score of 142!
-
-
-You scored some points for using the echo service!
