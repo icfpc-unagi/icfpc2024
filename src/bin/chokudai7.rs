@@ -84,7 +84,7 @@ fn solve2(input: &Input, step: i32, first_mod: usize) -> i32 {
             if best_result.lock().unwrap().0 == 0 {
                 return;
             }
-            let ii = ((i as u64 * 123456711) % (93 * 93 * 93)) as usize;
+            let ii = i;
 
             let result = solve3(ii, start_id, d, step as usize, &next, modulo);
 
@@ -223,7 +223,7 @@ fn solve3(
         r %= 4;
         */
         let r = a % 4;
-        let ss = a % step;
+        let ss = (a % step + 1);
         a = (a * b + c) % modulo;
 
         for k in 0..ss {
@@ -360,7 +360,7 @@ fn getLastA(
                 ans[3] = a2;
             }
         }
-        turn += a2 % step;
+        turn += (a2 % step + 1);
         visited[a2] = true;
         a2 = ((a2 as u64 * b as u64 + c as u64) % modulo as u64) as usize;
     }
