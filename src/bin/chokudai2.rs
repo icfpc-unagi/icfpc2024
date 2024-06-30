@@ -63,8 +63,9 @@ fn solve2(input: &Input, step: i32) -> i32 {
         }
     }
 
-    let prime = vec![1, 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41];
-    let range = 0..=1 << (2 * prime.len());
+    //let prime = vec![1, 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41];
+    //let range = 0..=1 << (2 * prime.len());
+    let range = 0..(93 * 93 * 93);
 
     // 並列処理の結果を保存するためのMutexを用意します。
     let best_result = Mutex::new((9999999, 99999999)); // (solve(i), i)
@@ -76,7 +77,7 @@ fn solve2(input: &Input, step: i32) -> i32 {
         if best_result.lock().unwrap().0 == 0 {
             return;
         }
-        let ii = ((i as u64 * 123456789) % (1 << (prime.len() * 2))) as usize;
+        let ii = ((i as u64 * 123456711) % (93 * 93 * 93)) as usize;
 
         let result = solve3(ii, start_id, d, step as usize, &next);
 
@@ -102,9 +103,14 @@ fn solve2(input: &Input, step: i32) -> i32 {
     let best_result = best_result.lock().unwrap();
     if best_result.0 == 0 {
         println!("OK : {}", best_result.1);
-        println!("a : {}", best_result.1 / 1024 / 1024);
-        println!("b : {}", best_result.1 / 1024 % 1024);
-        println!("c : {}", best_result.1 % 1024);
+        let a = best_result.1 / 93 / 93 + 1;
+        let b = best_result.1 / 93 % 93 + 1;
+        let c = best_result.1 % 93 + 1;
+        println!("a : {}", a);
+        println!("b : {}", b);
+        println!("c : {}", c);
+        let last = getLastA(a, b, c, step as usize);
+        println!("last : {} {} {} {}", last[0], last[1], last[2], last[3]);
         /*
         for p in 0..prime.len() {
             let mul = (best_result.1 as i32 >> (p * 2)) % 4;
@@ -123,13 +129,14 @@ fn solve2(input: &Input, step: i32) -> i32 {
 }
 
 fn solve3(bit: usize, start_id: usize, d: usize, step: usize, next: &Vec<Vec<usize>>) -> usize {
-    let prime = vec![1, 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31];
+    //let prime = vec![1, 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31];
     let mut visited = vec![false; d];
     let mut loopflag = vec![false; d];
     visited[start_id] = true;
     let mut now = start_id;
     let mut remain_pos = d - 1;
 
+    /*
     let mut loop_length = 1;
     let mut prime_count = 0;
 
@@ -140,22 +147,28 @@ fn solve3(bit: usize, start_id: usize, d: usize, step: usize, next: &Vec<Vec<usi
             prime_count += 1;
         }
     }
+    */
 
     let limit_turn = 999998 / step;
 
-    let c = bit % 1024;
-    let b = bit / 1024 % 1024;
-    let mut a = bit / 1024 / 1024 % 1024 + 1;
+    let c = bit % 93 + 1;
+    let b = bit / 93 % 93 + 1;
+    let mut a = bit / 93 / 93 % 93 + 1;
+    if a <= 1 {
+        return remain_pos;
+    }
 
     for turn in 0..limit_turn {
         let rt = limit_turn - turn;
 
+        /*
         if turn as usize % loop_length == 0 {
             if loopflag[now] {
                 break;
             }
             loopflag[now] = true;
         }
+        */
 
         /*
         let mut r = 0;
@@ -207,9 +220,7 @@ fn main() {
 }
 
 fn main2() {
-    const STACK_SIZE: usize = 16 * 1024 * 1024; // 512 MB
-
-    for i in 18..22 {
+    for i in 21..22 {
         solve(i);
     }
 }
@@ -280,6 +291,33 @@ fn request(input: &str) -> anyhow::Result<String> {
     }
 }
 
+fn getLastA(a: usize, b: usize, c: usize, step: usize) -> Vec<usize> {
+    let mut visited = vec![false; 1000003];
+
+    let mut ans = vec![!0; 4];
+    let max_turn = 999998 / step;
+    let mut a2 = a;
+    for i in 0..max_turn {
+        if !visited[a2] {
+            if i < 94 {
+                ans[0] = i;
+            }
+            if i < 94 * 94 {
+                ans[1] = i;
+            }
+            if i < 94 * 94 * 94 {
+                ans[2] = i;
+            }
+            if i < 94 * 94 * 94 * 94 {
+                ans[3] = i;
+            }
+        }
+        visited[a2] = true;
+        a2 = ((a2 as u64 * b as u64 + c as u64) % 1000003) as usize;
+    }
+
+    return ans;
+}
 struct Input {
     board: Vec<Vec<char>>,
 }
