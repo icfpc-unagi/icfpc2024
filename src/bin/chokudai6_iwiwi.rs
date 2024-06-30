@@ -2,6 +2,7 @@
 
 extern crate num_bigint;
 extern crate num_traits;
+use clap::Parser;
 
 use core::num;
 use itertools::{KMerge, KMergeBy};
@@ -400,9 +401,25 @@ fn solve3(
     return (remain_pos, 0);
 }
 
-fn main() {
-    let args: Vec<String> = env::args().collect();
+/// A simple program to send file contents as requests
+#[derive(Parser, Debug)]
+struct Args {
+    #[arg(long)]
+    problem: usize,
 
+    #[arg(long)]
+    step: usize,
+
+    #[arg(long)]
+    modulo: usize,
+
+    #[arg(long)]
+    use_c: bool,
+}
+
+fn main() {
+    /*
+    let args: Vec<String> = env::args().collect();
     let id: usize = args[1].parse().expect("ID should be an integer");
     let step: usize = args[2].parse().expect("Step should be an integer");
     let modulo: usize = if args.len() > 3 {
@@ -410,8 +427,11 @@ fn main() {
     } else {
         1000003
     };
+    */
+    let args = Args::parse();
+    dbg!(&args);
 
-    solve(id, step, modulo, true);
+    solve(args.problem, args.step, args.modulo, args.use_c);
 }
 
 fn solve(i: usize, step: usize, first_mod: usize, use_c: bool) {
