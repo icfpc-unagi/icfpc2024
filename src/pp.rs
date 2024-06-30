@@ -6,8 +6,6 @@ use crate::*;
 /// Preprocessor for ICFP lambda language
 pub fn preprocess(s: &str) -> anyhow::Result<String> {
     let chars = s.trim().chars().collect::<Vec<_>>();
-    // parse s into tokens
-    // token: separated by whitespace but " " strings may contain spaces
     let mut tokens = vec![];
     let mut new_token = String::new();
     let mut in_string = false;
@@ -38,15 +36,21 @@ pub fn preprocess(s: &str) -> anyhow::Result<String> {
     if !new_token.is_empty() {
         tokens.push(new_token.clone());
     }
-    for token in &mut tokens {
+    let mut pp_tokens = vec![];
+    for token in tokens {
         if let Ok(n) = token.parse::<BigInt>() {
-            *token = encode_bigint(n);
+            pp_tokens.push(encode_bigint(n));
         } else if token.starts_with('"') {
             assert!(token.ends_with('"') && token.len() >= 2);
-            *token = format!("S{}", &encode_str(&token[1..token.len() - 1]));
+            pp_tokens.push(format!("S{}", &encode_str(&token[1..token.len() - 1])));
+        } else if token == "Y" {
+            const Y: &str = "Lf B$ Lx B$ vf B$ vx vx Lx B$ vf B$ vx vx";
+            pp_tokens.extend(Y.split_whitespace().map(|t| t.to_string()));
+        } else {
+            pp_tokens.push(token);
         }
     }
-    Ok(tokens.join(" "))
+    Ok(pp_tokens.join(" "))
 }
 
 #[cfg(test)]
