@@ -218,13 +218,6 @@ fn solve2(problem_id: usize, input: &Input, step: i32, first_mod: usize, use_c: 
             let (remain_pos, last_turn) =
                 solve3(a, b, c, start_id, d, step as usize, &next, modulo);
 
-            // 最小値を更新
-            let mut best = best_result.lock().unwrap();
-            if remain_pos < best.0 {
-                *best = (remain_pos, a, b, c);
-                println!("  NowBest: {} at i: {} {}", best.0, best.1, challenge);
-            }
-
             // もしsolve(i)が0ならば即終了 → そう甘くない！lastの0が0になるまで終了しない
             if remain_pos == 0 {
                 let last = getLastA(a, b, c, step as usize, modulo, last_turn);
@@ -264,6 +257,13 @@ fn solve2(problem_id: usize, input: &Input, step: i32, first_mod: usize, use_c: 
                 *best = (remain_pos, a, b, c);
                 println!("found!");
                 return;
+            }
+
+            // 最小値を更新
+            let mut best = best_result.lock().unwrap();
+            if remain_pos < best.0 {
+                *best = (remain_pos, a, b, c);
+                println!("  NowBest: {} at i: {} {}", best.0, best.1, challenge);
             }
 
             challenge.add(1);
