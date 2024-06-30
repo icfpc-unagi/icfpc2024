@@ -1,0 +1,28 @@
+chokudai random
+
+dir[sum_i ((t/a_i)*b_i) % 4]
+
+
+B$ Ly
+B$
+    B$ vY Lf Lt
+        ? B= vt 999999
+            "solve lambdamanXX "
+            B.
+                B$ vf B+ vt 1
+                BT 2 BD B* 2
+                    B$
+                        B$ vY Lf Lp
+                            ? B= vp 0
+                                0
+                                B+
+                                    B*
+                                        B/ vt B% vp 93
+                                        B/ vp 93
+                                    B$
+                                        vf
+                                        B/ vp 372
+                        123456789123456789123456789
+                    "UURRDDLL"
+    0
+Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx

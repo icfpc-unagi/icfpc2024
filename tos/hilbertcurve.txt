@@ -1,0 +1,113 @@
+f(x+1, a, b, c, d)
+
+f(x, b, a, d, c)
+a
+f(x, a, b, c, d)
+b
+f(x, a, b, c, d)
+c
+f(x, d, c, b, a)
+
+
+
+[03], [12]
+01
+02
+
+
+6回以上再帰
+ループしないほうがよい？
+
+
+Y = Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
+
+
+"solve lambdaman16 " = S3/,6%},!-"$!-!.V[}
+
+B. S3/,6%},!-"$!-!.V[}
+B$ B$ B$ B$ B$
+    B$
+        Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
+        Lf Lx La Lb Lc Ld
+            ?
+                B= vx I!
+                S
+                B. B. B. B. B. B.
+                    B$ B$ B$ B$ B$
+                        vf B- vx I" vb va vd vc
+                    va
+                    B$ B$ B$ B$ B$
+                        vf B- vx I" va vb vc vd
+                    vb
+                    B$ B$ B$ B$ B$
+                        vf B- vx I" va vb vc vd
+                    vc
+                    B$ B$ B$ B$ B$
+                        vf B- vx I" vd vc vb va
+    I'
+    S>>
+    SLL
+    SOO
+    SFF
+
+
+B. S3/,6%},!-"$!-!.V[}
+B$ LS
+    B$ B$ B$
+        B$
+            Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
+            Lf Lx La Lb
+                B$ Lg
+                B$ Lt
+                ?
+                    B= vx I!
+                    S
+                    B. B. B. B. B. B.
+                        B$ B$ vg vb va
+                        B$ vS va
+                        vt
+                        B$ vS vb
+                        vt
+                        B$ vS B- I' va
+                        B$ B$ vg B- I' vb B- I' va
+                B$ B$ vg va vb
+                B$ vf B- vx I"
+        I%
+        I!
+        I#
+    Ln
+        BT I# BD vn S>>LLFFOO
+
+
+n = 8*a + b
+8*b + a = (8*n)%63
+8*(6-b) + (6-a) =
+
+B. S3/,6%},!-"$!-!.V[}
+B$ LS
+B$ B$
+    B$
+        Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
+        Lf Lx Ln
+            B$ Lg
+            B$ Lm
+            B$ Lh
+            ?
+                B= vx I!
+                S
+                B. B. B. B.
+                    B$ vg vm
+                    B$ vS vm
+                    B$ vg vn
+                    B$ vh vn
+                    B$ vh B- IW vm
+            Lk
+                B.
+                    B$ vS vk
+                    B$ vg vk
+            B% B* I) vn I`
+            B$ vf B- vx I"
+    I%
+    I#
+Ln
+    BT I# BD B% vn I) S>>LLFFOO

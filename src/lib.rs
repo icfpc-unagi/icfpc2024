@@ -14,6 +14,7 @@ pub mod www;
 pub mod sql;
 
 pub mod lambdaman;
+pub mod pp;
 
 pub trait SetMinMax {
     fn setmin(&mut self, v: Self) -> bool;
