@@ -84,7 +84,7 @@ fn solve2(input: &Input, step: i32, first_mod: usize) -> i32 {
             if best_result.lock().unwrap().0 == 0 {
                 return;
             }
-            let ii = ((i as u64 * 123456711) % (93 * 93 * 93)) as usize;
+            let ii = i;
 
             let result = solve3(ii, start_id, d, step as usize, &next, modulo);
 
@@ -361,6 +361,7 @@ fn getLastA(
 
     return ans;
 }
+
 struct Input {
     board: Vec<Vec<char>>,
 }
