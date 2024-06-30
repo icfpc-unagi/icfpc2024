@@ -1,3 +1,4 @@
+use anyhow::ensure;
 use num::BigInt;
 
 use crate::*;
@@ -32,6 +33,8 @@ pub fn preprocess(s: &str) -> anyhow::Result<String> {
             new_token.push(c);
         }
     }
+    ensure!(escape == false, "unterminated escape");
+    ensure!(in_string == false, "unterminated string");
     if !new_token.is_empty() {
         tokens.push(new_token.clone());
     }
