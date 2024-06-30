@@ -274,48 +274,53 @@ fn S(body: &[u8]) -> Value {
     Value::Str(body.iter().map(|&b| CHARS[b as usize - 33]).collect())
 }
 
-fn subst(root: &NodePos, var: &BigInt, val: Rc<NodePos>, level: usize) -> Rc<NodePos> {
+fn subst(
+    root: &NodePos,
+    var: &BigInt,
+    val: Rc<NodePos>,
+    level: usize,
+) -> anyhow::Result<Rc<NodePos>> {
     let pos = root.1;
     match &root.0 {
-        Node::Const(val) => Rc::new(NodePos(Node::Const(val.clone()), pos)),
-        Node::Unary { op, v } => Rc::new(NodePos(
+        Node::Const(val) => Ok(Rc::new(NodePos(Node::Const(val.clone()), pos))),
+        Node::Unary { op, v } => Ok(Rc::new(NodePos(
             Node::Unary {
                 op: *op,
-                v: subst(v, var, val, level),
+                v: subst(v, var, val, level)?,
             },
             pos,
-        )),
-        Node::Binary { op, v1, v2 } => Rc::new(NodePos(
+        ))),
+        Node::Binary { op, v1, v2 } => Ok(Rc::new(NodePos(
             Node::Binary {
                 op: *op,
-                v1: subst(v1, var, val.clone(), level),
-                v2: subst(v2, var, val, level),
+                v1: subst(v1, var, val.clone(), level)?,
+                v2: subst(v2, var, val, level)?,
             },
             pos,
-        )),
-        Node::If { cond, v1, v2 } => Rc::new(NodePos(
+        ))),
+        Node::If { cond, v1, v2 } => Ok(Rc::new(NodePos(
             Node::If {
-                cond: subst(cond, var, val.clone(), level),
-                v1: subst(v1, var, val.clone(), level),
-                v2: subst(v2, var, val, level),
+                cond: subst(cond, var, val.clone(), level)?,
+                v1: subst(v1, var, val.clone(), level)?,
+                v2: subst(v2, var, val, level)?,
             },
             pos,
-        )),
-        Node::Lambda { var: var2, exp } => Rc::new(NodePos(
+        ))),
+        Node::Lambda { var: var2, exp } => Ok(Rc::new(NodePos(
             Node::Lambda {
                 var: var2.clone(),
-                exp: subst(exp, var, shift(val, level), level + 1),
+                exp: subst(exp, var, shift(val, level), level + 1)?,
             },
             pos,
-        )),
+        ))),
         Node::Var(var2, index) => {
             if index == &Some(level) {
-                val.clone()
+                Ok(val.clone())
             } else {
-                Rc::new(NodePos(Node::Var(var2.clone(), *index), pos))
+                Ok(Rc::new(NodePos(Node::Var(var2.clone(), *index), pos)))
             }
         }
-        Node::Thunk(_) => panic!("unevaluated thunk"),
+        Node::Thunk(_) => anyhow::bail!("Token {}: subst thunk", pos),
     }
 }
 
@@ -575,7 +580,7 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
                         if *count > 10_000_000 {
                             panic!("beta reductions limit exceeded");
                         }
-                        let v = subst(&exp, &var, v2.clone(), 0);
+                        let v = subst(&exp, &var, v2.clone(), 0)?;
                         rec(&v, count)
                     }
                     _ => panic!("apply of non-lambda"),
@@ -591,7 +596,7 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
                         if *count > 10_000_000 {
                             panic!("beta reductions limit exceeded");
                         }
-                        let v = subst(&exp, &var, Rc::new(b), 0);
+                        let v = subst(&exp, &var, Rc::new(b), 0)?;
                         rec(&v, count)
                     }
                     _ => panic!("apply of non-lambda"),
@@ -608,7 +613,7 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
                         }
                         let v2: NodePos = (**v2).clone();
                         let v2 = NodePos(thunk(v2), pos);
-                        let v = subst(&exp, &var, Rc::new(v2), 0);
+                        let v = subst(&exp, &var, Rc::new(v2), 0)?;
                         rec(&v, count)
                     }
                     _ => panic!("apply of non-lambda"),
