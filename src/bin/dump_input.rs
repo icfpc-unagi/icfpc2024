@@ -6,7 +6,9 @@ fn main() {
     for line in std::io::stdin().lock().lines() {
         let line = line.unwrap();
         let line = line.trim();
-        debug_parse(line);
+        if !line.is_empty() {
+            debug_parse(line);
+        }
     }
 }
 

@@ -29,33 +29,37 @@ pub struct CommQuery {
 }
 
 pub async fn comm(query: web::Query<CommQuery>) -> impl Responder {
-    let response = match communicate_async(if query.raw {
-        query.q.to_owned()
-    } else {
-        "S".to_owned() + &encode_str(&query.q)
-    })
-    .await
-    {
-        Ok(body) => body,
-        Err(error) => return HttpResponse::InternalServerError().body(error.to_string()),
-    };
-    // let value = eval::eval(&response);
-    // let value_str = if let eval::Value::Str(s) = value {
-    //     String::from_utf8(s).unwrap_or_default()
-    // } else {
-    //     format!("{}", value)
-    // };
-    // echo eval
-    let value_str = match communicate_async("B. S%#(/} ".to_owned() + &response).await {
-        Ok(value) => {
-            let decoded = decode_str(value.strip_prefix('S').unwrap_or(&value));
-            decoded
-                .strip_suffix("\n\nYou scored some points for using the echo service!\n")
-                .unwrap_or(&decoded)
-                .to_owned()
-        }
-        Err(error) => return HttpResponse::InternalServerError().body(error.to_string()),
-    };
+    let mut value_str = String::new();
+    let mut response = String::new();
+    if !query.q.is_empty() {
+        response = match communicate_async(if query.raw {
+            query.q.to_owned()
+        } else {
+            "S".to_owned() + &encode_str(&query.q)
+        })
+        .await
+        {
+            Ok(body) => body,
+            Err(error) => return HttpResponse::InternalServerError().body(error.to_string()),
+        };
+        // let value = eval::eval(&response);
+        // let value_str = if let eval::Value::Str(s) = value {
+        //     String::from_utf8(s).unwrap_or_default()
+        // } else {
+        //     format!("{}", value)
+        // };
+        // echo eval
+        value_str = match communicate_async("B. S%#(/} ".to_owned() + &response).await {
+            Ok(value) => {
+                let decoded = decode_str(value.strip_prefix('S').unwrap_or(&value));
+                decoded
+                    .strip_suffix("\n\nYou scored some points for using the echo service!\n")
+                    .unwrap_or(&decoded)
+                    .to_owned()
+            }
+            Err(error) => return HttpResponse::InternalServerError().body(error.to_string()),
+        };
+    }
     HttpResponse::Ok()
         .content_type("text/html")
         .body(www::handlers::template::render(&format!(
