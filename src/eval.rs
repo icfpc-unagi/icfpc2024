@@ -108,7 +108,7 @@ pub fn parse(
     match id {
         b'T' => match body.len() {
             0 => Ok(NodePos(Node::Const(Value::Bool(true)), tokens[*p - 1].0)),
-            v => anyhow::bail!(
+            _ => anyhow::bail!(
                 "Token at {}: T needs no argument, but: {}",
                 tokens[*p - 1].0,
                 body.iter().map(|&b| b as char).collect::<String>()
@@ -116,7 +116,7 @@ pub fn parse(
         },
         b'F' => match body.len() {
             0 => Ok(NodePos(Node::Const(Value::Bool(false)), tokens[*p - 1].0)),
-            v => anyhow::bail!(
+            _ => anyhow::bail!(
                 "Token at {}: F needs no argument, but: {}",
                 tokens[*p - 1].0,
                 body.iter().map(|&b| b as char).collect::<String>()
