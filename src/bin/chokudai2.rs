@@ -136,7 +136,7 @@ fn solve2(input: &Input, step: i32, first_mod: usize) -> i32 {
         println!("b : {}", b);
         println!("c : {}", c);
         println!("mod : {}", modulo);
-        let last = getLastA(a, b, c, step as usize);
+        let last = getLastA(a, b, c, step as usize, modulo);
         println!("last : {} {} {} {}", last[0], last[1], last[2], last[3]);
         /*
         for p in 0..prime.len() {
@@ -317,29 +317,29 @@ fn request(input: &str) -> anyhow::Result<String> {
     }
 }
 
-fn getLastA(a: usize, b: usize, c: usize, step: usize) -> Vec<usize> {
-    let mut visited = vec![false; 1000003];
+fn getLastA(a: usize, b: usize, c: usize, step: usize, modulo: usize) -> Vec<usize> {
+    let mut visited = vec![false; modulo];
 
     let mut ans = vec![!0; 4];
     let max_turn = 999998 / step;
     let mut a2 = a;
     for i in 0..max_turn {
         if !visited[a2] {
-            if i < 94 {
-                ans[0] = i;
+            if a2 < 94 {
+                ans[0] = a2;
             }
-            if i < 94 * 94 {
-                ans[1] = i;
+            if a2 < 94 * 94 {
+                ans[1] = a2;
             }
-            if i < 94 * 94 * 94 {
-                ans[2] = i;
+            if a2 < 94 * 94 * 94 {
+                ans[2] = a2;
             }
-            if i < 94 * 94 * 94 * 94 {
-                ans[3] = i;
+            if a2 < 94 * 94 * 94 * 94 {
+                ans[3] = a2;
             }
         }
         visited[a2] = true;
-        a2 = ((a2 as u64 * b as u64 + c as u64) % 1000003) as usize;
+        a2 = ((a2 as u64 * b as u64 + c as u64) % modulo as u64) as usize;
     }
 
     return ans;
