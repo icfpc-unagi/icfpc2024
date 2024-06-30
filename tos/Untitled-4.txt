@@ -1,0 +1,84 @@
+B$ B$ B$ L" B$ L# B$ v" B$ v# v# L# B$ v" B$ v# v# Lf Ln Lx ? B= vn I! vx B$ B$ vf B- vn I/ B. vx vx I$ S!
+
+B$ B$ B$ L" B$ L# B$ v" B$ v# v# L# B$ v" B$ v# v# Lf Ln Lx ? B= vn I! vx B$ B$ vf B- vn I+ B. vx vx I$ S!
+
+B$ B$ B$ L" B$ L# B$ v" B$ v# v# L# B$ v" B$ v# v# Lf Ln Lx ? B= vn I! vx B$ B$ vf B- vn I( B. vx vx I$ S!
+
+B$ B$ B$ L" B$ L# B$ v" B$ v# v# L# B$ v" B$ v# v# Lf Ln Lx ? B= vn I! vx B$ B$ vf B- vn I# B. vx vx I$ S!
+
+B$ B$ B$ L" B$ L# B$ v" B$ v# v# L# B$ v" B$ v# v# Lf Ln Lx ? B= vn I! vx B$ B$ vf B- vn I" B. vx vx I$ S!
+
+B$ B$ B$ L" B$ L# B$ v" B$ v# v# L# B$ v" B$ v# v# Lf Ln Lx ? B= vn I! vx B$ B$ vf B- vn I# B. vx S" I$ S!
+
+
+B$ B$ L" B$ L# B$ v" B$ v# v# L# B$ v" B$ v# v# Lf Lx ? B= vx I! S! B. S" B$ vf B- vx I" I/I
+
+B$ B$ L" B$ L# B$ v" B$ v# v# L# B$ v" B$ v# v# Lf Lx ? B= vx I! S! B. S"unagiunagiunagiunagiunagiunagiunagi B$ vf B- vx I" IzII
+
+
+B$ B$ L" B$ L# B$ v" B$ v# v# L# B$ v" B$ v# v# Lf Lx ? B= vx I! I" B* vx B$ vf B- vx I" II
+U$ B$ B$ L" B$ L# B$ v" B$ v# v# L# B$ v" B$ v# v# Lf Lx ? B= vx I! I" B* vx B$ vf B- vx I" II
+U$ B$ B$ L" B$ L# B$ v" B$ v# v# L# B$ v" B$ v# v# Lf Lx ? B= vx I! I" B* vx B$ vf B- vx I" I(II
+
+
+\x y. y (x x y)
+Lx Ly B$ vy B$ B$ vx vx vy
+
+turing theta
+B$ Lx Ly B$ vy B$ B$ vx vx vy Lx Ly B$ vy B$ B$ vx vx vy
+
+B$ B$ B$ B$ Lx Ly B$ vy B$ B$ vx vx vy Lx Ly B$ vy B$ B$ vx vx vy Lf Ln Lx ? B= vn I! vx B$ B$ vf B- vn I" B. vx vx I$ S!
+B$ B$ B$ B$ Lx Ly B$ vy B$ B$ vx vx vy Lx Ly B$ vy B$ B$ vx vx vy Lf Ln Lx ? B= vn I! vx B$ B$ vf B- vn I" B. vx vx I* S!
+B$ B$ B$ B$ Lx Ly B$ vy B$ B$ vx vx vy Lx Ly B$ vy B$ B$ vx vx vy Lf Ln Lx ? B= vn I! vx B$ B$ vf B- vn I" B. vx vx I0 S!
+B$ B$ B$ B$ Lx Ly B$ vy B$ B$ vx vx vy Lx Ly B$ vy B$ B$ vx vx vy Lf Ln Lx ? B= vn I! vx B$ B$ vf B- vn I" B. vx vx I5 S!
+B$ B$ B$ B$ Lx Ly B$ vy B$ B$ vx vx vy Lx Ly B$ vy B$ B$ vx vx vy Lf Ln Lx ? B= vn I! vx B$ B$ vf B- vn I" B. vx vx I7 S!
+
+B$ B$ B$ B$ Lx Ly B$ vy B$ B$ vx vx vy Lx Ly B$ vy B$ B$ vx vx vy Lf Ln Lx ? B= vn I! vx B$ B$ vf B- vn I" B. vx vx I8 S!
+B$ B$ B$ B$ Lx Ly B$ vy B$ B$ vx vx vy Lx Ly B$ vy B$ B$ vx vx vy Lf Ln Lx ? B= vn I! vx B$ B$ vf B- vn I" B. vx vx I9 S!
+
+\f n x -> n == 0 ? x : f (n - 1) (x ++ x)
+
+(((((\v87 -> (\v88 -> (v88 $ ((v87 $ v87) $ v88)))) $ (\v87 -> (\v88 -> (v88 $ ((v87 $ v87) $ v88))))) $ (\v69 -> (\v77 -> (\v87 -> ((v77 = 0) ? v87 : ((v69 $ (v77 - 1)) $ (v87 . v87))))))) $ 3) $ "a")
+
+
+U$ B$ B$ L" B$ L# B$ v" B$ v# v# L# B$ v" B$ v# v# Lf Lx ? B= vx I! I" B* vx B$ vf B- vx I" II
+
+
+x -> x+x+x
+
+B. S3/,6%},!-"$!-!.[} B$ Lf B$ vf B$ vf B$ vf B$ vf B$ vf SL Ls B. vs B. vs vs
+B. S3/,6%},!-"$!-!.[} B$ Lf B$ vf B$ vf B$ vf B$ vf SLLL Ls B. vs B. vs vs
+B. S3/,6%},!-"$!-!.[} B$ Lf B$ vf B$ vf B$ vf SLLLLLLLL Ls B. vs B. vs vs
+
+church number exponential
+B$ Lg B$ vg vg Lf Lx B$ vf B$ vf B$ vf B$ vf vx
+B$ B$ Lg B$ vg vg Lf Lx B$ vf B$ vf B$ vf B$ vf vx Ls B. vs SL
+B$ B$ B$ Lg B$ vg vg Lf Lx B$ vf B$ vf B$ vf B$ vf vx Ls B. vs SL S3/,6%},!-"$!-!.[}
+
+
+
+B$ B$ B$ Lf B$ Lx B$ vf B$ vx vx Lx B$ vf B$ vx vx Lf Lx Ln ? B> vx I! B* vx B$ vf B- vx I" I" I& I&
+((
+    ((\v69 -> ((\v87 -> (v69 $ (v87 $ v87))) 
+    $ (\v8((((\v69 -> ((\v87 -> (v69 $ (v87 $ v87))) $ (\v87 -> (v69 $ (v87 $ v87))))) $ (\v69 -> (\v87 -> (\v77 -> ((v87 > 0) ? (v87 * (v69 $ (v87 - 1))) : 1))))) $ 5) $ 5)
+7 -> (v69 $ (v87 $ v87))))) 
+    $ 
+    (\v69 -> (\v87 -> (\v77 -> ((v87 > 0) ? (v87 * (v69 $ (v87 - 1))) : 1)))))
+$ 5) $ 5)
+
+
+(((
+    (\v69 -> ((\v87 -> (v69 $ (v87 $ v87))) $ (\v87 -> (v69 $ (v87 $ v87)))))
+    $ 
+    (\v69 -> (\v87 -> (\v77 -> (
+        (v87 > 0) ? (v87 * (v69 $ (v87 - 1))) : 1
+    ))))
+ ) $ 5) $ 5)
+
+
+
+ Y f -> f (Y f)
+ Y f a b -> f (Y f) a b
+
+U$ B$ B$ B$ Lf B$ Lx B$ vf B$ vx vx Lx B$ vf B$ vx vx Lf Lx Ln ? B> vx I! B* vx B$ vf B- vx I" I" I& I&
+
