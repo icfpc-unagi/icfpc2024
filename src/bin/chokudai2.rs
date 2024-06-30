@@ -12,6 +12,7 @@ use rand::prelude::*;
 use rayon::prelude::*;
 use resvg::usvg::filter::Turbulence;
 use std::char::MAX;
+use std::env;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::ops::Add;
@@ -207,34 +208,21 @@ fn solve3(bit: usize, start_id: usize, d: usize, step: usize, next: &Vec<Vec<usi
 }
 
 fn main() {
-    const STACK_SIZE: usize = 512 * 1024 * 1024; // 512 MB
+    let args: Vec<String> = env::args().collect();
 
-    let builder = thread::Builder::new().stack_size(STACK_SIZE);
-    let handler = builder
-        .spawn(|| {
-            main2();
-        })
-        .unwrap();
+    let id: usize = args[1].parse().expect("ID should be an integer");
+    let step: usize = args[2].parse().expect("Step should be an integer");
 
-    handler.join().unwrap();
+    solve(id, step);
 }
 
-fn main2() {
-    for i in 21..22 {
-        solve(i);
-    }
-}
-
-fn solve(i: usize) {
+fn solve(i: usize, step: usize) {
     let filename = format!("input/lambdaman/lambdaman{}.txt", i);
     let input = read_input_from_file(filename);
     _ = get_time(true);
 
     eprintln!("Test case {}", i);
-    let moves = solve2(&input, 1);
-    if moves == 0 {
-        //let moves = solve2(&input, 2);
-    }
+    let moves = solve2(&input, step as i32);
 }
 
 fn decode(c: char) -> char {
