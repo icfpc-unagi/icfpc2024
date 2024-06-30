@@ -111,28 +111,56 @@ fn gen(problem_id: i64, x0: i64, a: i64, c: i64, m: i64, xt: i64, step: i32) -> 
         "##
             );
         } else {
+            let dm = m * 2;
+            let dx0 = x0 * 2;
+            let dxt = xt * 2;
+
             return format!(
                 r##"
-        B.
-            "solve lambdaman{problem_id} "
-            B$
+            B.
+                "solve lambdaman{problem_id} "
                 B$
-                    Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
-                    Lf Lx
-                    ?
-                        B= vx {xt}
-                        ""
-                        B.
-                            BT 2 BD B% B* vx 2 8 "RRDDLLUU"
-                            B$ vf
-                                B%
-                                    B*
-                                        vx
-                                        {a}
-                                    {m}
-            {x0}
-        "##
+                    B$
+                        Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
+                        Lf Lx
+                        ?
+                            B= vx {dxt}
+                            ""
+                            B.
+                                BT 2 BD B% vx 8 "RRDDLLUU"
+                                B$ vf
+                                    B%
+                                        B*
+                                            vx
+                                            {a}
+                                        {dm}
+                {dx0}
+            "##
             );
+            /*
+                return format!(
+                    r##"
+            B.
+                "solve lambdaman{problem_id} "
+                B$
+                    B$
+                        Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
+                        Lf Lx
+                        ?
+                            B= vx {xt}
+                            ""
+                            B.
+                                BT 2 BD B% B* vx 2 8 "RRDDLLUU"
+                                B$ vf
+                                    B%
+                                        B*
+                                            vx
+                                            {a}
+                                        {m}
+                {x0}
+            "##
+                );
+                */
         }
     } else {
         panic!()
@@ -191,14 +219,21 @@ fn solve2(problem_id: usize, input: &Input, step: i32, first_mod: usize, use_c: 
 
         //let range = 0..(93 * 93 * 93);
 
-        let mut range: Vec<u64>;
-        if use_c {
-            range = (0..(93 * 93 * 93)).collect();
+        let max_a = if step == 1 {
+            93
+        } else if step == 2 {
+            93 / 2
         } else {
-            range = vec![];
-            for a in 0..93 {
-                for b in 0..93 {
-                    range.push((a * 93 + b) * 93);
+            panic!()
+        };
+        let max_b = 93;
+        let max_c = if use_c { max_a } else { 1 };
+
+        let mut range: Vec<u64> = vec![];
+        for a in 0..max_a {
+            for b in 0..max_b {
+                for c in 0..max_c {
+                    range.push((a * 93 * 93 + b * 93 + c) as u64);
                 }
             }
         }
@@ -534,16 +569,16 @@ fn getLastA(
     let mut a2 = a;
     for i in 0..max_turn {
         if !visited[a2] && i >= end_turn {
-            if a2 < 94 {
+            if a2 < 94 / step {
                 ans[0] = a2;
             }
-            if a2 < 94 * 94 {
+            if a2 < 94 * 94 / step {
                 ans[1] = a2;
             }
-            if a2 < 94 * 94 * 94 {
+            if a2 < 94 * 94 * 94 / step {
                 ans[2] = a2;
             }
-            if a2 < 94 * 94 * 94 * 94 {
+            if a2 < 94 * 94 * 94 * 94 / step {
                 ans[3] = a2;
             }
         }
