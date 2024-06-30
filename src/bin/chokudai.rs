@@ -441,7 +441,7 @@ fn request(input: &str) -> anyhow::Result<String> {
 fn test_encode_i() {
     let num = BigInt::from(1258827021845_i64);
     let encoded = encode_i(num.clone());
-    let decoded = icfpc2024::eval::eval(&encoded);
+    let decoded = icfpc2024::eval::eval(&encoded).unwrap();
     assert_eq!(format!("{}", decoded), format!("int({})", num));
 }
 
