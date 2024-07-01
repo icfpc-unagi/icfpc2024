@@ -81,8 +81,8 @@ fn solve2(input: &Input, step: i32, first_mod: usize) -> i32 {
     loop {
         eprintln!("now modulo: {}", modulo);
 
-        //let range = 0..(93 * 93 * 93);
-        let range = 0..1000;
+        let range = 0..(93 * 93 * 93);
+        //let range = 0..1000;
         range.into_par_iter().for_each(|i| {
             if best_result.lock().unwrap().0 == 0 {
                 return;
