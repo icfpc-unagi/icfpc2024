@@ -15,6 +15,8 @@ fn main() {
             match eval::transpile(&(term)) {
                 Ok(transpiled) => {
                     eprintln!("Transpiled ({}): {}", transpiled.len(), transpiled);
+                    let result = eval::prettify(&term);
+                    eprintln!("Prettified:\n{}", result.0.trim());
                 }
                 Err(err) => {
                     eprintln!("Error: {}", err);

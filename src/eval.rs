@@ -30,7 +30,7 @@ pub enum Node {
 }
 
 #[derive(Clone, Debug)]
-pub struct NodePos(pub Node, pub usize);
+pub struct NodePos(pub Node, Rc<String>);
 
 impl PartialEq for NodePos {
     fn eq(&self, other: &Self) -> bool {
@@ -92,7 +92,7 @@ impl std::fmt::Display for Node {
 impl std::fmt::Display for NodePos {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if f.alternate() {
-            write!(f, "{:#}:{}", self.0, self.1)
+            write!(f, "{:#} ({})", self.0, self.1)
         } else {
             write!(f, "{}", self.0)
         }
@@ -117,31 +117,36 @@ pub fn debug_parse(s: &str) -> () {
 }
 
 pub fn parse(
-    tokens: &[(usize, Vec<u8>)],
+    tokens: &[((usize, usize), Vec<u8>)],
     p: &mut usize,
     binders: &mut Vec<BigInt>,
 ) -> anyhow::Result<NodePos> {
     if tokens.len() <= *p {
-        anyhow::bail!("Token after {}: unexpected end of input", tokens[*p - 1].0);
+        anyhow::bail!("Token at end: unexpected end of input");
     }
-    let pos: usize = tokens[*p].0;
+    let name = Rc::new(format!(
+        "{} at {}:{}",
+        std::str::from_utf8(&tokens[*p].1).expect("invalid UTF-8"),
+        tokens[*p].0 .0,
+        tokens[*p].0 .1,
+    ));
     let id = tokens[*p].1[0];
     let body = &tokens[*p].1[1..];
     *p += 1;
     match id {
         b'T' => match body.len() {
-            0 => Ok(NodePos(Node::Const(Value::Bool(true)), pos)),
+            0 => Ok(NodePos(Node::Const(Value::Bool(true)), name)),
             _ => anyhow::bail!(
-                "Token at {}: T needs no argument, but: {}",
-                pos,
+                "Token {}: T needs no argument, but: {}",
+                name,
                 body.iter().map(|&b| b as char).collect::<String>()
             ),
         },
         b'F' => match body.len() {
-            0 => Ok(NodePos(Node::Const(Value::Bool(false)), pos)),
+            0 => Ok(NodePos(Node::Const(Value::Bool(false)), name)),
             _ => anyhow::bail!(
-                "Token at {}: F needs no argument, but: {}",
-                pos,
+                "Token {}: F needs no argument, but: {}",
+                name,
                 body.iter().map(|&b| b as char).collect::<String>()
             ),
         },
@@ -150,10 +155,10 @@ pub fn parse(
             for (i, &b) in body.iter().enumerate() {
                 match b {
                     b'!'..=b'~' => val = val * 94 + (b - 33),
-                    _ => anyhow::bail!("Token at {}: invalid character in integer at {}", pos, i),
+                    _ => anyhow::bail!("Token {}: invalid character in integer at {}", name, i),
                 }
             }
-            Ok(NodePos(Node::Const(Value::Int(val)), pos))
+            Ok(NodePos(Node::Const(Value::Int(val)), name))
         }
         // デバッグ用の記法
         b'0'..=b'9' => {
@@ -161,13 +166,13 @@ pub fn parse(
             for &b in body {
                 val = val * 10 + (b - b'0');
             }
-            Ok(NodePos(Node::Const(Value::Int(val)), pos))
+            Ok(NodePos(Node::Const(Value::Int(val)), name))
         }
-        b'S' => Ok(NodePos(Node::Const(S(body)), pos)),
+        b'S' => Ok(NodePos(Node::Const(S(body)), name)),
         // デバッグ用の記法
         b'"' => Ok(NodePos(
             Node::Const(Value::Str(body[..body.len() - 1].to_vec())),
-            pos,
+            name,
         )),
         b'U' => match body.len() {
             1 => Ok(NodePos(
@@ -175,11 +180,11 @@ pub fn parse(
                     op: body[0],
                     v: Rc::new(parse(tokens, p, binders)?),
                 },
-                pos,
+                name,
             )),
             _ => anyhow::bail!(
-                "Token at {}: U takes exactly one argument, but: {}",
-                pos,
+                "Token {}: U takes exactly one argument, but: {}",
+                name,
                 body.iter().map(|&b| b as char).collect::<String>()
             ),
         },
@@ -190,11 +195,11 @@ pub fn parse(
                     v1: Rc::new(parse(tokens, p, binders)?),
                     v2: Rc::new(parse(tokens, p, binders)?),
                 },
-                pos,
+                name,
             )),
             _ => anyhow::bail!(
-                "Token at {}: B takes exactly two arguments, but: {}",
-                pos,
+                "Token {}: B takes exactly two arguments, but: {}",
+                name,
                 body.iter().map(|&b| b as char).collect::<String>()
             ),
         },
@@ -205,11 +210,11 @@ pub fn parse(
                     v1: Rc::new(parse(tokens, p, binders)?),
                     v2: Rc::new(parse(tokens, p, binders)?),
                 },
-                pos,
+                name,
             )),
             _ => anyhow::bail!(
-                "Token at {}: ? takes no arguments, but: {}",
-                pos,
+                "Token {}: ? takes no arguments, but: {}",
+                name,
                 body.iter().map(|&b| b as char).collect::<String>()
             ),
         },
@@ -219,8 +224,8 @@ pub fn parse(
                 match b {
                     b'!'..=b'~' => var = var * 94 + (b - 33),
                     _ => anyhow::bail!(
-                        "Token at {}: invalid character '{}' in lambda argument at {}",
-                        pos,
+                        "Token {}: invalid character '{}' in lambda argument at {}",
+                        name,
                         b as char,
                         i
                     ),
@@ -232,7 +237,7 @@ pub fn parse(
                 exp: Rc::new(parse(tokens, p, binders)?),
             };
             binders.pop();
-            Ok(NodePos(res, tokens[*p - 1].0))
+            Ok(NodePos(res, name))
         }
         b'v' => {
             let mut var = BigInt::from(0);
@@ -240,17 +245,17 @@ pub fn parse(
                 match b {
                     b'!'..=b'~' => var = var * 94 + (b - 33),
                     _ => anyhow::bail!(
-                        "Token at {}: invalid character '{}' in variable at {}",
-                        pos,
+                        "Token {}: invalid character '{}' in variable at {}",
+                        name,
                         b as char,
                         i
                     ),
                 }
             }
             let de_bruijn_index = binders.iter().rev().position(|b| b == &var);
-            Ok(NodePos(Node::Var(var, de_bruijn_index), pos))
+            Ok(NodePos(Node::Var(var, de_bruijn_index), name))
         }
-        id => anyhow::bail!("Token at {}: unknown token: {}", pos, id as char),
+        id => anyhow::bail!("Token {}: unknown token: {}", name, id as char),
     }
 }
 
@@ -308,7 +313,7 @@ fn subst(
     val: Rc<NodePos>,
     level: usize,
 ) -> anyhow::Result<Rc<NodePos>> {
-    let pos = root.1;
+    let pos = root.1.clone();
     match &root.0 {
         Node::Const(val) => Ok(Rc::new(NodePos(Node::Const(val.clone()), pos))),
         Node::Unary { op, v } => Ok(Rc::new(NodePos(
@@ -353,7 +358,7 @@ fn subst(
 }
 
 fn shift(root: Rc<NodePos>, level: usize) -> Rc<NodePos> {
-    let pos = root.1;
+    let pos = root.1.clone();
     match &root.0 {
         Node::Thunk(_) => todo!(),
         Node::Const(val) => Rc::new(NodePos(Node::Const(val.clone()), pos)),
@@ -395,7 +400,7 @@ fn shift(root: Rc<NodePos>, level: usize) -> Rc<NodePos> {
 }
 
 fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
-    let pos = root.1;
+    let pos = root.1.clone();
     match &root.0 {
         Node::Const(val) => Ok(NodePos(Node::Const(val.clone()), pos)),
         Node::Unary { op, v } => match op {
@@ -726,13 +731,21 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
     }
 }
 
-fn tokenize(input: &str) -> anyhow::Result<Vec<(usize, Vec<u8>)>> {
+fn tokenize(input: &str) -> anyhow::Result<Vec<((usize, usize), Vec<u8>)>> {
     let mut tokens = Vec::new();
     let mut start = 0;
-    let mut in_whitespace = false;
+    let mut in_whitespace = true;
     let mut in_quote = false;
+    let mut location = (1, 0);
+    let mut start_location = (1, 1);
 
     for (index, ch) in input.char_indices() {
+        if ch == '\n' {
+            location.0 += 1;
+            location.1 = 0;
+        } else {
+            location.1 += 1;
+        }
         if in_quote {
             if ch == '"' {
                 in_quote = false;
@@ -741,16 +754,17 @@ fn tokenize(input: &str) -> anyhow::Result<Vec<(usize, Vec<u8>)>> {
         }
         if ch.is_whitespace() != in_whitespace {
             if ch.is_whitespace() {
-                tokens.push((start, input[start..index].bytes().collect()));
+                tokens.push((start_location, input[start..index].bytes().collect()));
             }
             start = index;
+            start_location = location;
             in_whitespace = ch.is_whitespace();
             in_quote = ch == '"';
         }
     }
 
     if !in_whitespace {
-        tokens.push((start, input[start..].bytes().collect()));
+        tokens.push((start_location, input[start..].bytes().collect()));
     }
 
     if in_quote {
@@ -760,15 +774,15 @@ fn tokenize(input: &str) -> anyhow::Result<Vec<(usize, Vec<u8>)>> {
     Ok(tokens)
 }
 
-fn prettify_tokens(tokens: &[(usize, Vec<u8>)]) -> (String, Option<anyhow::Error>) {
+fn prettify_tokens(tokens: &[((usize, usize), Vec<u8>)]) -> (String, Option<anyhow::Error>) {
     fn prettify_token(
-        tokens: &[(usize, Vec<u8>)],
+        tokens: &[((usize, usize), Vec<u8>)],
         p: usize,
         indent: usize,
         output: &mut Vec<u8>,
     ) -> anyhow::Result<usize> {
         if tokens.len() <= p {
-            anyhow::bail!("Token after {}: unexpected end of input", tokens[p - 1].0);
+            anyhow::bail!("Token at end: unexpected end of input");
         }
         let token = &tokens[p];
         // output.extend(b" ".repeat(indent * 2));
@@ -810,8 +824,9 @@ fn prettify_tokens(tokens: &[(usize, Vec<u8>)]) -> (String, Option<anyhow::Error
                 p1 + p2 + p3
             }
             _ => anyhow::bail!(
-                "Token at {}: unexpected token: {}",
-                token.0,
+                "Token at {}:{}: unexpected token: {}",
+                token.0 .0,
+                token.0 .1,
                 String::from_utf8(token.1.clone()).unwrap()
             ),
         })
@@ -840,8 +855,7 @@ fn eval_to_node(s: &str) -> anyhow::Result<NodePos> {
     let root = parse(&tokens, &mut p, &mut binders)?;
     if p != tokens.len() {
         anyhow::bail!(
-            "Token after {}: unexpected end of input after {}",
-            tokens[p].0,
+            "Token at end: unexpected end of input after {}",
             String::from_utf8(tokens[p].1.clone()).unwrap()
         );
     }
@@ -936,8 +950,7 @@ pub fn transpile(s: &str) -> anyhow::Result<String> {
     let root = parse(&tokens, &mut p, &mut binders)?;
     if p != tokens.len() {
         anyhow::bail!(
-            "Token after {}: unexpected end of input after {}",
-            tokens[p].0,
+            "Token at end: unexpected end of input after {}",
             String::from_utf8(tokens[p].1.clone()).unwrap()
         );
     }
@@ -1066,9 +1079,9 @@ fn test_reduction() {
 #[test]
 fn test_position() {
     // 値はそのポジションをとるべき
-    assert_eq!(eval_to_node("I0").unwrap().1, 0);
+    assert_eq!(eval_to_node("I0").unwrap().1.as_str(), "I0 at 1:1");
     // 計算結果は計算結果の位置になって欲しい
-    assert_eq!(eval_to_node("B+ I0 I0").unwrap().1, 0);
+    assert_eq!(eval_to_node("B+ I0 I0").unwrap().1.as_str(), "B+ at 1:1");
 }
 
 #[test]
@@ -1076,27 +1089,27 @@ fn test_errors() {
     // 一項演算子のあとがないパターン
     assert_eq!(
         format!("{}", eval_to_node("U-").unwrap_err()),
-        "Token after 0: unexpected end of input"
+        "Token at end: unexpected end of input"
     );
     // 二項演算子のあとがないパターン
     assert_eq!(
         format!("{}", eval_to_node("B. B.").unwrap_err()),
-        "Token after 3: unexpected end of input"
+        "Token at end: unexpected end of input"
     );
     // 文字列演算ができないパターン
     assert_eq!(
         format!("{}", eval_to_node("B. I0 S").unwrap_err()),
-        r#"Token 0: concat of non-str: 15:3 . "":6"#,
+        r#"Token B. at 1:1: concat of non-str: 15 (I0 at 1:4) . "" (S at 1:7)"#,
     );
     // 整数演算ができないパターン
     assert_eq!(
         format!("{}", eval_to_node("B+ I0 S").unwrap_err()),
-        r#"Token 0: addition of non-int: 15:3 + "":6"#,
+        r#"Token B+ at 1:1: addition of non-int: 15 (I0 at 1:4) + "" (S at 1:7)"#,
     );
     // 計算結果の演算ができないパターン
     assert_eq!(
         format!("{}", eval_to_node("B+ I0 B. S0 S1").unwrap_err()),
-        r#"Token 0: addition of non-int: 15:3 + "pq":6"#,
+        r#"Token B+ at 1:1: addition of non-int: 15 (I0 at 1:4) + "pq" (B. at 1:7)"#,
     );
 }
 
