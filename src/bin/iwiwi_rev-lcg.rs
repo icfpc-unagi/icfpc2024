@@ -291,7 +291,7 @@ fn doit(problem: &Problem, step: i64, m: i64, global_best_score: &Mutex<i64>) ->
             let mut gbs = global_best_score.lock().unwrap();
             if score < *gbs {
                 *gbs = score;
-                eprintln!("M={:8} | remain={:3}", lcg.m, local_best_score);
+                eprintln!("M={:8} | remain={:3}", lcg.m, score);
 
                 if score == 0 {
                     finish(problem.id, &lcg, step);
