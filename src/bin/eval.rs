@@ -2,16 +2,23 @@ use icfpc2024::eval::*;
 use std::io::prelude::*;
 
 fn main() {
+    eprintln!("Enter a program to evaluate (end with ';'):");
+    let mut program = String::new();
     for line in std::io::stdin().lock().lines() {
         let line = line.unwrap();
         let line = line.trim();
-        match eval(line) {
-            Ok(result) => {
-                println!("{}", result);
+        program += line;
+        program += "\n";
+        if program.trim().ends_with(';') {
+            match eval(program.trim().trim_end_matches(';')) {
+                Ok(result) => {
+                    println!("{}", result);
+                }
+                Err(err) => {
+                    eprintln!("Error: {}", err);
+                }
             }
-            Err(err) => {
-                eprintln!("Error: {}", err);
-            }
+            program.clear();
         }
     }
 }

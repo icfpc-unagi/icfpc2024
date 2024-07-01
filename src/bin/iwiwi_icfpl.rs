@@ -43,13 +43,13 @@ fn decode_from_i(c: u32) -> char {
 
 fn main() {
     let prefix = encode_str(&"solve lambdaman9 ".to_string());
-    
+
     let all = format!("B. {prefix} B$ Lf B$ vf B. B. B$ vf SL B$ vf SF S> B$ Lf Ls B$ vf B$ vf B$ vf vs Ls B. B. vs vs B. vs vs");
     let all = format!("B. {prefix} B$ Lf B$ vf B. B. B$ vf SLL B$ vf SFF S> B$ Lf Ls B$ vf B$ vf B$ vf vs Ls B. B. vs vs vs"); // 縦が足りない
 
     // let all = format!("B. {prefix} B$ Lf B$ vf B. B. B$ vf SL B$ vf SF S> B$ Lf Ls B$ vf B$ vf B$ vf B$ vf vs Ls B. B. vs vs vs");
     // let all = format!("B. {prefix} B$ Lf B$ vf B. B. B$ vf SL B$ vf SF S> B$ Lf Ls B$ vf B$ vf B$ vf B$ vf B$ vf B$ vf vs Ls B. vs vs");
-    eprintln!("{}", eval(&all));
+    eprintln!("{}", eval(&all).unwrap());
     eprintln!("{}", all);
     dbg!(all.len());
 
@@ -62,7 +62,7 @@ fn main() {
         //let t = encode_i(101.into());
         let t = encode_str(&"LLLLLLLLLL".to_string());
         dbg!(&t);
-        eprintln!("{}", eval(&t));
+        eprintln!("{}", eval(&t).unwrap());
         return;
     }
 
