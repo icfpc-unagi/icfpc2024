@@ -4,9 +4,10 @@ extern crate num_bigint;
 extern crate num_traits;
 
 use core::num;
+use itertools::Itertools;
 use itertools::{KMerge, KMergeBy};
 use num::*;
-use num_bigint::BigInt;
+use num_bigint::{BigInt, ToBigInt};
 use num_traits::{PrimInt, ToPrimitive};
 use rand::prelude::*;
 use rayon::{array, prelude::*, string};
@@ -68,14 +69,22 @@ fn solve2(input: &Input, step: i32, xnum: usize, snum: usize, steps: usize) -> i
 
     let best_result = Mutex::new((9999999, 99999999)); // (solve(i), i)
 
-    loop {
-        let sum = xnum + snum * 4 + 1;
-        let mut max = 1;
-        for i in 0..sum {
-            max *= 1 + i;
-        }
+    let mut base_array = vec![];
+    for i in 0..snum {
+        base_array.push(0);
+        base_array.push(1);
+        base_array.push(2);
+        base_array.push(3);
+    }
+    base_array.push(5);
+    for i in 0..xnum {
+        base_array.push(4);
+    }
 
-        let range = 0..(max);
+    let max = count_permutations(&base_array) as i64;
+
+    loop {
+        let range = 0..max;
         range.into_par_iter().for_each(|i| {
             if best_result.lock().unwrap().0 == 0 {
                 return;
@@ -115,7 +124,7 @@ fn solve2(input: &Input, step: i32, xnum: usize, snum: usize, steps: usize) -> i
 }
 
 fn solve3(
-    bit: usize,
+    bit: i64,
     start_id: usize,
     d: usize,
     xnum: usize,
@@ -134,8 +143,8 @@ fn solve3(
 
     let mut remain_bit = bit;
     for i in 0..perm_length {
-        perm[i] = remain_bit % (i + 1);
-        remain_bit /= i + 1;
+        perm[i] = (remain_bit % (i + 1) as i64) as usize;
+        remain_bit /= (i + 1) as i64;
     }
 
     for k in 0..perm.len() {
@@ -159,11 +168,11 @@ fn solve3(
 
     for i in 0..perm_length {
         if perm[i] < xnum {
-            if xmin < perm[i] || array_start == !0 {
+            if array_start == !0 {
                 error = true;
                 break;
             }
-            xmin += 1;
+            //xmin += 1;
 
             base_array[i] = 4;
         } else if xnum == perm[i] {
@@ -173,10 +182,10 @@ fn solve3(
             let rem = perm[i] - (xnum + 1);
             let r = rem % 4;
             if amin[r] != perm[i] {
-                error = true;
-                break;
+                //rror = true;
+                //break;
             }
-            amin[r] += 4;
+            //amin[r] += 4;
 
             base_array[i] = r;
         }
@@ -253,6 +262,57 @@ fn solve3(
         }
     }
     return (remain_pos, 0);
+}
+
+fn factorial(n: usize) -> usize {
+    (1..=n).product()
+}
+
+fn count_permutations(arr: &[usize]) -> usize {
+    let mut freq = HashMap::new();
+    for &num in arr {
+        *freq.entry(num).or_insert(0) += 1;
+    }
+
+    let mut denom = 1;
+    for &count in freq.values() {
+        denom *= factorial(count);
+    }
+
+    factorial(arr.len()) / denom
+}
+
+// 指定したインデックスのユニークなpermutationを返す関数
+fn get_unique_permutation(mut arr: Vec<usize>, mut index: usize) -> Option<Vec<usize>> {
+    arr.sort();
+    let mut result = Vec::new();
+    let n = arr.len();
+    let mut factorials = vec![1; n + 1];
+    for i in 1..=n {
+        factorials[i] = factorials[i - 1] * i;
+    }
+
+    while !arr.is_empty() {
+        let mut freq = HashMap::new();
+        for &num in &arr {
+            *freq.entry(num).or_insert(0) += 1;
+        }
+
+        let mut cum_freq = 0;
+        for num in freq.keys().cloned().collect::<Vec<_>>() {
+            let count = freq[&num];
+            let perm_count = factorials[arr.len() - 1] / factorials[count - 1];
+            if cum_freq + perm_count > index {
+                result.push(num);
+                arr.retain(|&x| x != num);
+                index -= cum_freq;
+                break;
+            }
+            cum_freq += perm_count;
+        }
+    }
+
+    Some(result)
 }
 
 fn main() {
@@ -485,7 +545,7 @@ impl<T: Copy> Trace<T> {
 
 use rand::SeedableRng;
 use rustc_hash::FxHashSet;
-use std::collections::BinaryHeap;
+use std::collections::{BinaryHeap, HashMap};
 
 #[derive(Clone, Debug)]
 struct Entry<K, V> {
