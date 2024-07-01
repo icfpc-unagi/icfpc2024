@@ -114,7 +114,6 @@ fn solve2(input: &Input, step: i32, xnum: usize, snum: usize, steps: usize) -> i
                 println!("  NowBest: {} at i: {}", best.0, best.1);
             }
         });
-        break;
     }
 
     let best_result = best_result.lock().unwrap();
