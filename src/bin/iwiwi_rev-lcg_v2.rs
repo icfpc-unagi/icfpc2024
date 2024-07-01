@@ -300,7 +300,7 @@ fn find_x0(xt: i64, a: i64, m: i64, step: i64) -> Option<i64> {
     for i in 0.. {
         x = (x * inv_a) % m;
 
-        if x < 94 {
+        if x * step < 94 {
             x0_i = Some((x, i));
         }
 
