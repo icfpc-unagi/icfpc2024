@@ -70,15 +70,15 @@ fn solve2(input: &Input, step: i32, xnum: usize, snum: usize, steps: usize) -> i
     let best_result = Mutex::new((9999999, 99999999)); // (solve(i), i)
 
     let mut base_array = vec![];
-    for i in 0..xnum {
-        base_array.push(4);
-    }
-    base_array.push(5);
     for i in 0..snum {
         base_array.push(0);
         base_array.push(1);
         base_array.push(2);
         base_array.push(3);
+    }
+    base_array.push(5);
+    for i in 0..xnum {
+        base_array.push(4);
     }
 
     let max = count_permutations(&base_array) as i64;
@@ -139,20 +139,18 @@ fn solve3(
     let mut remain_pos = d - 1;
 
     let mut base_array = vec![];
-    for i in 0..xnum {
-        base_array.push(4);
-    }
-    base_array.push(5);
     for i in 0..snum {
         base_array.push(0);
         base_array.push(1);
         base_array.push(2);
         base_array.push(3);
     }
+    base_array.push(5);
+    for i in 0..xnum {
+        base_array.push(4);
+    }
 
-    get_permutation(&base_array, bit as usize);
-
-    //dbg!(base_array.clone());
+    let mut base_array = get_permutation(&base_array, bit as usize).unwrap();
 
     let mut array_start = !0;
 
@@ -163,7 +161,7 @@ fn solve3(
         if base_array[i] == 5 {
             array_start = i;
             break;
-        } else if base_array[i] < 4 {
+        } else if base_array[i] == 4 {
             return (remain_pos, 0);
         } else {
             for k in 0..step {
