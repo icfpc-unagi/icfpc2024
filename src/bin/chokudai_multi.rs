@@ -7,7 +7,7 @@ use core::num;
 use itertools::Itertools;
 use itertools::{KMerge, KMergeBy};
 use num::*;
-use num_bigint::BigInt;
+use num_bigint::{BigInt, ToBigInt};
 use num_traits::{PrimInt, ToPrimitive};
 use rand::prelude::*;
 use rayon::{array, prelude::*, string};
@@ -138,35 +138,71 @@ fn solve3(
     let mut now = start_id;
     let mut remain_pos = d - 1;
 
-    let mut base_array = vec![];
-    for i in 0..snum {
-        base_array.push(0);
-        base_array.push(1);
-        base_array.push(2);
-        base_array.push(3);
-    }
-    base_array.push(5);
-    for i in 0..xnum {
-        base_array.push(4);
+    let perm_length = xnum + snum * 4 + 1;
+    let mut perm = vec![0; perm_length];
+
+    let mut remain_bit = bit;
+    for i in 0..perm_length {
+        perm[i] = (remain_bit % (i + 1) as i64) as usize;
+        remain_bit /= (i + 1) as i64;
     }
 
-    let mut base_array = get_permutation(&base_array, bit as usize).unwrap();
+    for k in 0..perm.len() {
+        for i in 0..k {
+            if perm[i] >= perm[k] {
+                perm[i] += 1;
+            }
+        }
+    }
 
+    let mut error = false;
+    let mut xmin = 0;
+
+    let mut amin = vec![];
+    for i in 0..4 {
+        amin.push(i + xnum + 1);
+    }
+
+    let mut base_array = vec![0; perm_length];
     let mut array_start = !0;
+
+    for i in 0..perm_length {
+        if perm[i] < xnum {
+            if array_start == !0 {
+                error = true;
+                break;
+            }
+            //xmin += 1;
+
+            base_array[i] = 4;
+        } else if xnum == perm[i] {
+            array_start = i;
+            base_array[i] = 5;
+        } else {
+            let rem = perm[i] - (xnum + 1);
+            let r = rem % 4;
+            if amin[r] != perm[i] {
+                //rror = true;
+                //break;
+            }
+            //amin[r] += 4;
+
+            base_array[i] = r;
+        }
+    }
+
+    if error {
+        return (remain_pos, 0);
+    }
+
+    let limit_turn = 999998 / step;
 
     let mut now_array = vec![];
     let mut now_size = 0;
 
-    for i in 0..base_array.len() {
-        if base_array[i] == 5 {
-            array_start = i;
-            break;
-        } else if base_array[i] == 4 {
-            return (remain_pos, 0);
-        } else {
-            for k in 0..step {
-                now_array.push(base_array[i]);
-            }
+    for i in 0..array_start {
+        for k in 0..step {
+            now_array.push(base_array[i]);
         }
     }
     now_size = now_array.len();
@@ -228,16 +264,55 @@ fn solve3(
     return (remain_pos, 0);
 }
 
-fn count_permutations<T: Clone>(arr: &[T]) -> usize {
-    arr.iter().permutations(arr.len()).count()
+fn factorial(n: usize) -> usize {
+    (1..=n).product()
+}
+
+fn count_permutations(arr: &[usize]) -> usize {
+    let mut freq = HashMap::new();
+    for &num in arr {
+        *freq.entry(num).or_insert(0) += 1;
+    }
+
+    let mut denom = 1;
+    for &count in freq.values() {
+        denom *= factorial(count);
+    }
+
+    factorial(arr.len()) / denom
 }
 
 // 指定したインデックスのユニークなpermutationを返す関数
-fn get_permutation<T: Clone>(arr: &[T], index: usize) -> Option<Vec<T>> {
-    arr.iter()
-        .permutations(arr.len())
-        .nth(index)
-        .map(|perm| perm.into_iter().cloned().collect())
+fn get_unique_permutation(mut arr: Vec<usize>, mut index: usize) -> Option<Vec<usize>> {
+    arr.sort();
+    let mut result = Vec::new();
+    let n = arr.len();
+    let mut factorials = vec![1; n + 1];
+    for i in 1..=n {
+        factorials[i] = factorials[i - 1] * i;
+    }
+
+    while !arr.is_empty() {
+        let mut freq = HashMap::new();
+        for &num in &arr {
+            *freq.entry(num).or_insert(0) += 1;
+        }
+
+        let mut cum_freq = 0;
+        for num in freq.keys().cloned().collect::<Vec<_>>() {
+            let count = freq[&num];
+            let perm_count = factorials[arr.len() - 1] / factorials[count - 1];
+            if cum_freq + perm_count > index {
+                result.push(num);
+                arr.retain(|&x| x != num);
+                index -= cum_freq;
+                break;
+            }
+            cum_freq += perm_count;
+        }
+    }
+
+    Some(result)
 }
 
 fn main() {
@@ -470,7 +545,7 @@ impl<T: Copy> Trace<T> {
 
 use rand::SeedableRng;
 use rustc_hash::FxHashSet;
-use std::collections::BinaryHeap;
+use std::collections::{BinaryHeap, HashMap};
 
 #[derive(Clone, Debug)]
 struct Entry<K, V> {
