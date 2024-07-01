@@ -122,6 +122,30 @@ fn find_xt(lcg: &LCGConfig, step: i64) -> Option<i64> {
     xt
 }
 
+// x0, a, c, mが与えられたら、xtを見つける。
+fn find_xt_nodup(lcg: &LCGConfig, step: i64, used_xt: &Vec<bool>) -> Option<i64> {
+    let limit = 1_000_000 - 30;
+
+    let mut xt = None;
+    let mut len = 0;
+
+    let mut x = lcg.x0;
+    loop {
+        x = (x * lcg.a + lcg.c) % lcg.m;
+
+        if x < 94 && !used_xt[x as usize] {
+            xt = Some(x);
+        }
+
+        len += step;
+        if len > limit {
+            break;
+        }
+    }
+
+    xt
+}
+
 fn generate_moves(lcg: &LCGConfig, step: i64) -> Vec<char> {
     let chars = "RDLU".chars().collect::<Vec<_>>();
 
@@ -218,7 +242,7 @@ fn gen(problem_id: i64, lcg: &LCGConfig, step: i64) -> String {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// Modulo
+// Number theory
 ///////////////////////////////////////////////////////////////////////////////
 
 fn is_prime(x: i64) -> bool {
@@ -253,6 +277,49 @@ fn generate_modulo_candidates(min: i64, n: usize) -> Vec<i64> {
     candidates
 }
 
+/*
+typedef long long ll;
+
+inline ll mod(ll a, ll m) { return (a % m + m) % m; }
+
+ll inverse(ll a, ll m) {
+  if ((a = mod(a, m)) == 1) return 1;
+  return mod((1 - m * inverse(m % a, a)) / a, m);
+}
+*/
+fn inverse(a: i64, m: i64) -> i64 {
+    let a = a % m;
+    if a == 1 {
+        return 1;
+    }
+    ((1 - m * inverse(m % a, a)) / a % m + m) % m
+}
+
+fn find_x0(xt: i64, a: i64, m: i64, step: i64) -> Option<i64> {
+    let limit = 1_000_000 - 30;
+    let inv_a = inverse(a, m);
+
+    let mut x0 = None;
+    let mut len = 0;
+
+    let mut x = xt;
+    loop {
+        x = (x * inv_a) % m;
+
+        // TODO: 2度目を検知したほうがいい？
+        if x < 94 {
+            x0 = Some(x);
+        }
+
+        len += step;
+        if len > limit {
+            break;
+        }
+    }
+
+    x0
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Main
 ///////////////////////////////////////////////////////////////////////////////
@@ -285,6 +352,7 @@ fn finish(problem_id: i64, lcg: &LCGConfig, step: i64) {
 
 fn doit(problem: &Problem, step: i64, m: i64, global_best_score: &Mutex<i64>) -> i64 {
     // eprintln!("Modulo: {m}");
+    /*
     let mut lcg_configs = vec![];
     for x0 in 1..=(93 / step) {
         for a in 2..=93 {
@@ -298,41 +366,56 @@ fn doit(problem: &Problem, step: i64, m: i64, global_best_score: &Mutex<i64>) ->
         }
     }
     lcg_configs.shuffle(&mut rand::thread_rng());
+    */
 
     let mut local_best_score = 9999999;
-
-    for mut lcg in lcg_configs {
-        lcg.xt = find_xt(&lcg, step);
-        if lcg.xt.is_none() {
-            continue;
-        }
-
-        let moves = generate_moves(&lcg, step);
-        // eprintln!("{:?}, {}", lcg.xt, moves.len());
-        // dbg!(moves.len());
-        // TODO: めっちゃ短い周期の乱数でめっちゃ短いのが生成されちゃう
-
-        let n_visited_cells = run(&problem, &moves.iter().collect::<String>());
-        let n_reachable_cells = get_reachable_cells(&problem);
-        assert!(n_visited_cells <= n_reachable_cells);
-
-        let score = n_reachable_cells - n_visited_cells;
-        if score < local_best_score {
-            let mut gbs = global_best_score.lock().unwrap();
-            if score < *gbs {
-                *gbs = score;
-                eprintln!("M={:8} | remain={:3}", lcg.m, score);
-
-                if score == 0 {
-                    finish(problem.id, &lcg, step);
-                }
+    for a in 2..=93 {
+        for xt in 1..=(93 / step) {
+            let x0 = find_x0(xt, a, m, step);
+            if x0.is_none() {
+                continue;
             }
-            local_best_score = *gbs;
-        }
+            let x0 = x0.unwrap();
 
-        // dbg!(n_visited_cells, n_reachable_cells);
-        if local_best_score == 0 {
-            return 0;
+            // 本当は逆向きなのでやばい
+            let mut lcg = LCGConfig {
+                x0,
+                a,
+                c: 0,
+                m,
+                xt: Some(xt),
+            };
+
+            let moves = generate_moves(&lcg, step);
+            // eprintln!("a={}, xt={}, x0={}, {}", a, xt, x0, moves.len());
+
+            // 原始根だけ考えればよくね？？？？？？？？ TODO: これでいい？
+            if moves.len() < 500_000 {
+                break;
+            }
+
+            let n_visited_cells = run(&problem, &moves.iter().collect::<String>());
+            let n_reachable_cells = get_reachable_cells(&problem);
+            assert!(n_visited_cells <= n_reachable_cells);
+
+            let score = n_reachable_cells - n_visited_cells;
+            if score < local_best_score {
+                let mut gbs = global_best_score.lock().unwrap();
+                if score < *gbs {
+                    *gbs = score;
+                    eprintln!("M={:8} | remain={:3}", lcg.m, score);
+
+                    if score == 0 {
+                        finish(problem.id, &lcg, step);
+                    }
+                }
+                local_best_score = *gbs;
+            }
+
+            // dbg!(n_visited_cells, n_reachable_cells);
+            if local_best_score == 0 {
+                return 0;
+            }
         }
     }
 
