@@ -34,20 +34,8 @@ spaceship25 Your score: 647227. Best score: 610163.
 	任意経路
 	65530
 
-
-spaceship9 Your score: 213. Best score: 206.
-spaceship13 Your score: 23838. Best score: 23791.
-spaceship16 Your score: 1428. Best score: 1373.
-spaceship17 Your score: 418. Best score: 415.
-spaceship18 Your score: 2023. Best score: 1839.
-spaceship19 Your score: 11939. Best score: 11328.
-spaceship20 Your score: 2734. Best score: 2351.
-spaceship21 Your score: 2734. Best score: 2412.
-spaceship22 Your score: 1186. Best score: 1136.
-spaceship23 Your score: 191142. Best score: 168502.
-spaceship24 Your score: 559159. Best score: 559159.
-spaceship25 Your score: 594346. Best score: 594346.
-
-
-連続して取る
-
+spaceship19 Your score: 11546. Best score: 11279.
+spaceship20 Your score: 2392. Best score: 2342.
+spaceship21 Your score: 2401. Best score: 2376.
+spaceship23 Your score: 167787. Best score: 152792.
+spaceship24 Your score: 498329. Best score: 481573.

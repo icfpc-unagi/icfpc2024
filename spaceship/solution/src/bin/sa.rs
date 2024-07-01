@@ -5,9 +5,6 @@ use rand::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
 use solution::*;
 
-const TL: f64 = 1200.0;
-const DT: i64 = 10;
-
 fn get_order(input: &Input) -> Vec<usize> {
     if let Ok(best) = std::env::var("BEST") {
         return solution::read_order(input, &best);
@@ -66,7 +63,7 @@ fn get_order(input: &Input) -> Vec<usize> {
     let mut order = tsp::solve(
         &g,
         &order,
-        1800.0,
+        60.0,
         &mut rand_pcg::Pcg64Mcg::seed_from_u64(4932080),
     );
     if order[1] >= input.ps.len() {
@@ -130,31 +127,13 @@ fn find_acc(dt: i64, mut d: i64) -> (i64, Vec<i64>) {
     (v, out)
 }
 
-fn main() {
-    get_time();
-    if input_id() != 18 {
-        return;
-    }
-    let mut input = read_input();
-    input.ps.sort();
-    input.ps.dedup();
-    let order = get_order(&input);
+fn solve(input: &Input, order: &[usize], tl: f64, ub: i64) -> Vec<i64> {
     let mut trace = Trace::new();
     let mut beam = vec![State {
         t: 0,
         v: (0, 0),
         id: !0,
     }];
-    let best = if let Ok(best) = std::env::var("BEST") {
-        read_output(&best)
-    } else {
-        vec![]
-    };
-    let mut best_state = State {
-        v: (0, 0),
-        t: 0,
-        id: !0,
-    };
     let stime = get_time();
     let mut cache_vs = FxHashMap::default();
     for k in 0..input.ps.len() {
@@ -190,6 +169,9 @@ fn main() {
         let mut next = vec![];
         let mut visited = FxHashSet::default();
         'list: for (T, s) in list {
+            if T > ub {
+                break;
+            }
             if !cache_vs.contains_key(&(T - beam[s].t, dx - beam[s].v.0 * (T - beam[s].t))) {
                 cache_vs.insert(
                     (T - beam[s].t, dx - beam[s].v.0 * (T - beam[s].t)),
@@ -218,75 +200,111 @@ fn main() {
                             v: (vx, vy),
                             id,
                         });
-                        if beam.len() > 1000000 {
+                        if beam.len() > 10000 {
                             break;
                         }
                     }
                 }
             }
-            if get_time() - stime > TL * (k + 1) as f64 / input.ps.len() as f64 {
+            if get_time() - stime > tl * (k + 1) as f64 / input.ps.len() as f64 {
                 break 'list;
             }
         }
-        if cache_vs.len() > 1000000 {
-            cache_vs.clear();
-        }
-        if !best.is_empty() {
-            let mut p = p;
-            while p != q {
-                let mv = best[best_state.t as usize];
-                best_state.v.0 += (mv - 1) % 3 - 1;
-                best_state.v.1 += (mv - 1) / 3 - 1;
-                p.0 += best_state.v.0;
-                p.1 += best_state.v.1;
-                best_state.id = trace.add(mv, best_state.id);
-                best_state.t += 1;
-            }
-            if let Some(i) = (0..next.len()).find(|&i| next[i].v == best_state.v) {
-                if next[i].t > best_state.t {
-                    next.remove(i);
-                    let j = next
-                        .iter()
-                        .position(|s| s.t > best_state.t)
-                        .unwrap_or(next.len());
-                    next.insert(j, best_state.clone());
-                }
-            } else {
-                let j = next
-                    .iter()
-                    .position(|s| s.t > best_state.t)
-                    .unwrap_or(next.len());
-                next.insert(j, best_state.clone());
-            }
-        }
         beam = next;
-        eprintln!(
-            "{} / {}: w = {}, t = {} ({})",
-            k,
-            input.ps.len(),
-            beam.len(),
-            beam[0].t,
-            best_state.t
-        );
-        let live = beam
-            .iter()
-            .map(|s| s.id)
-            .chain(vec![best_state.id])
-            .collect_vec();
+        let live = beam.iter().map(|s| s.id).collect_vec();
         let ids = trace.compact(&live);
         for s in beam.iter_mut() {
             s.id = if s.id == !0 { !0 } else { ids[s.id] };
         }
-        best_state.id = if best_state.id == !0 {
-            !0
-        } else {
-            ids[best_state.id]
-        };
+        if beam.len() == 0 {
+            return vec![];
+        }
     }
-    let out = trace.get(beam[0].id);
-    for mv in out {
+    trace.get(beam[0].id)
+}
+
+const TL: f64 = 60.0 * 15.0;
+const T0: f64 = 1e-5;
+const T1: f64 = 1e-5;
+const DT: i64 = 10;
+// const T0: f64 = 1e-3;
+// const T1: f64 = 1e-4;
+// const DT: i64 = 3;
+
+fn main() {
+    get_time();
+    if ![19, 20, 21, 22].contains(&input_id()) {
+        return;
+    }
+    let mut input = read_input();
+    input.ps.sort();
+    input.ps.dedup();
+    if input.ps.len() > 1000 {
+        // return;
+    }
+    let mut order = get_order(&input);
+    let mut out = solve(&input, &order, 1.0, 1000000000);
+    eprintln!("{:.3}: {}", get_time(), out.len());
+    let mut best = out.clone();
+    let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(49032743);
+    let stime = get_time();
+    let mut iter = 0;
+    loop {
+        let t = (get_time() - stime) / TL;
+        if t >= 1.0 {
+            break;
+        }
+        let temp = T0.powf(1.0 - t) * T1.powf(t);
+        let th = (-temp * rng.gen::<f64>().ln() * out.len() as f64) as i64;
+        let mut order2 = order.clone();
+        if rng.gen_bool(0.5) {
+            let mut i = rng.gen_range(0..order2.len());
+            let mut j = {
+                let mut js = (0..order2.len()).filter(|&j| i != j).collect_vec();
+                js.sort_by_key(|&j| {
+                    (input.ps[order2[i]].0 - input.ps[order2[j]].0).abs()
+                        + (input.ps[order2[i]].1 - input.ps[order2[j]].1).abs()
+                });
+                js.truncate(10);
+                js.choose(&mut rng).copied().unwrap()
+            };
+            if i == j {
+                continue;
+            } else if i > j {
+                std::mem::swap(&mut i, &mut j);
+            }
+            order2[i..=j].reverse();
+        } else {
+            let i = rng.gen_range(0..order2.len());
+            let p = order2[i];
+            order2.remove(i);
+            let j = {
+                let mut js = (0..order2.len()).filter(|&j| i != j).collect_vec();
+                js.sort_by_key(|&j| {
+                    (input.ps[p].0 - input.ps[order2[j]].0).abs()
+                        + (input.ps[p].1 - input.ps[order2[j]].1).abs()
+                });
+                js.truncate(10);
+                js.choose(&mut rng).copied().unwrap()
+            };
+            order2.insert(j, p);
+        }
+        iter += 1;
+        let out2 = solve(&input, &order2, 1.0, out.len() as i64 + th);
+        if out2.len() > 0 {
+            out = out2;
+            order = order2;
+            eprintln!("{:.3}: {} (iter = {})", get_time(), out.len(), iter);
+            if best.len() > out.len() {
+                best = out.clone();
+                eprintln!("!!!!!!!!!!!!!!!!");
+            }
+        }
+    }
+    for mv in best {
         println!("{}", mv);
     }
+    eprintln!("!log iter {}", iter);
     eprintln!("Time = {:.3}", get_time());
 }
 

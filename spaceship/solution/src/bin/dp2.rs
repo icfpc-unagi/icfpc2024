@@ -1,79 +1,13 @@
 #![allow(non_snake_case)]
 
+use fixedbitset::FixedBitSet;
 use itertools::Itertools;
-use rand::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
 use solution::*;
 
-const TL: f64 = 1200.0;
+const TL: f64 = 1.0 * 3600.0;
 const DT: i64 = 10;
-
-fn get_order(input: &Input) -> Vec<usize> {
-    if let Ok(best) = std::env::var("BEST") {
-        return solution::read_order(input, &best);
-    }
-    if input.ps.len() > 10000 {
-        let mut order = vec![0];
-        for i in 1..input.ps.len() {
-            let mut min = i64::MAX;
-            let mut p = 0;
-            for j in 0..order.len() {
-                let prev = if j == 0 {
-                    (0, 0)
-                } else {
-                    input.ps[order[j - 1]]
-                };
-                let next = input.ps[order[j]];
-                let d = (input.ps[i].0 - prev.0).abs()
-                    + (input.ps[i].1 - prev.1).abs()
-                    + (input.ps[i].0 - next.0).abs()
-                    + (input.ps[i].1 - next.1).abs()
-                    - (next.0 - prev.0).abs()
-                    - (next.1 - prev.1).abs();
-                if min.setmin(d) {
-                    p = j;
-                }
-            }
-            let d = (input.ps[i].0 - input.ps[order[order.len() - 1]].0).abs()
-                + (input.ps[i].1 - input.ps[order[order.len() - 1]].1).abs();
-            if min.setmin(d) {
-                p = order.len();
-            }
-            order.insert(p, i);
-        }
-        return order;
-    }
-    let mut g = mat![1000000000; input.ps.len() + 3; input.ps.len() + 3];
-    for i in 0..input.ps.len() {
-        for j in 0..input.ps.len() {
-            g[i][j] = (input.ps[i].0 - input.ps[j].0).abs() + (input.ps[i].1 - input.ps[j].1).abs();
-        }
-        g[i][input.ps.len()] = input.ps[i].0.abs() + input.ps[i].1.abs();
-        g[input.ps.len()][i] = g[i][input.ps.len()];
-        g[i][input.ps.len() + 1] = 0;
-        g[input.ps.len() + 1][i] = 0;
-    }
-    g[input.ps.len()][input.ps.len() + 2] = 0;
-    g[input.ps.len() + 2][input.ps.len()] = 0;
-    g[input.ps.len() + 1][input.ps.len() + 2] = 0;
-    g[input.ps.len() + 2][input.ps.len() + 1] = 0;
-    let order = [input.ps.len()]
-        .iter()
-        .copied()
-        .chain(0..input.ps.len())
-        .chain([input.ps.len() + 1, input.ps.len() + 2, input.ps.len()])
-        .collect_vec();
-    let mut order = tsp::solve(
-        &g,
-        &order,
-        1800.0,
-        &mut rand_pcg::Pcg64Mcg::seed_from_u64(4932080),
-    );
-    if order[1] >= input.ps.len() {
-        order.reverse();
-    }
-    order[1..1 + input.ps.len()].to_vec()
-}
+const TARGET_T: i64 = 1;
 
 // dt秒後にちょうどdだけ進むための加速方法と終速度を列挙
 fn listup(dt: i64, d: i64) -> Vec<(i64, Vec<i64>)> {
@@ -132,17 +66,18 @@ fn find_acc(dt: i64, mut d: i64) -> (i64, Vec<i64>) {
 
 fn main() {
     get_time();
-    if input_id() != 18 {
+    if input_id() < 18 {
         return;
     }
     let mut input = read_input();
     input.ps.sort();
     input.ps.dedup();
-    let order = get_order(&input);
     let mut trace = Trace::new();
     let mut beam = vec![State {
         t: 0,
+        p: (0, 0),
         v: (0, 0),
+        visited: FixedBitSet::with_capacity(input.ps.len()),
         id: !0,
     }];
     let best = if let Ok(best) = std::env::var("BEST") {
@@ -150,46 +85,68 @@ fn main() {
     } else {
         vec![]
     };
+    if best.len() == input.ps.len() {
+        return;
+    }
     let mut best_state = State {
-        v: (0, 0),
         t: 0,
+        p: (0, 0),
+        v: (0, 0),
+        visited: FixedBitSet::with_capacity(input.ps.len()),
         id: !0,
     };
-    let stime = get_time();
     let mut cache_vs = FxHashMap::default();
     for k in 0..input.ps.len() {
-        let p = if k == 0 {
-            (0, 0)
-        } else {
-            input.ps[order[k - 1]]
-        };
-        let q = input.ps[order[k]];
         let mut list = vec![];
-        let dx = q.0 - p.0;
-        let dy = q.1 - p.1;
+        let tl = get_time() + TL as f64 / input.ps.len() as f64 * 0.5;
         for s in 0..beam.len() {
-            let mut T = 0;
+            let p = beam[s].p;
             let v = beam[s].v;
-            loop {
-                if v.0 * T - T * (T + 1) / 2 <= dx && dx <= v.0 * T + T * (T + 1) / 2 {
-                    if v.1 * T - T * (T + 1) / 2 <= dy && dy <= v.1 * T + T * (T + 1) / 2 {
-                        break;
+            let target = {
+                let mut list = BoundedSortedList::new(10);
+                for i in 0..input.ps.len() {
+                    if !beam[s].visited[i] {
+                        list.insert(
+                            (input.ps[i].0 - p.0 - v.0 * TARGET_T).abs()
+                                + (input.ps[i].1 - p.1 - v.1 * TARGET_T).abs(),
+                            i,
+                        );
                     }
                 }
-                T += 1;
+                list.list().into_iter().map(|(_, i)| i).collect_vec()
+            };
+            for i in target {
+                let dx = input.ps[i].0 - p.0;
+                let dy = input.ps[i].1 - p.1;
+                let mut T = 0;
+                loop {
+                    if v.0 * T - T * (T + 1) / 2 <= dx && dx <= v.0 * T + T * (T + 1) / 2 {
+                        if v.1 * T - T * (T + 1) / 2 <= dy && dy <= v.1 * T + T * (T + 1) / 2 {
+                            break;
+                        }
+                    }
+                    T += 1;
+                }
+                for T in T..T + DT {
+                    if v.0 * T - T * (T + 1) / 2 <= dx && dx <= v.0 * T + T * (T + 1) / 2 {
+                        if v.1 * T - T * (T + 1) / 2 <= dy && dy <= v.1 * T + T * (T + 1) / 2 {
+                            list.push((beam[s].t + T, s, i));
+                        }
+                    }
+                }
             }
-            for T in T..T + DT {
-                if v.0 * T - T * (T + 1) / 2 <= dx && dx <= v.0 * T + T * (T + 1) / 2 {
-                    if v.1 * T - T * (T + 1) / 2 <= dy && dy <= v.1 * T + T * (T + 1) / 2 {
-                        list.push((beam[s].t + T, s));
-                    }
-                }
+            if get_time() > tl {
+                break;
             }
         }
         list.sort();
         let mut next = vec![];
-        let mut visited = FxHashSet::default();
-        'list: for (T, s) in list {
+        let mut used = FxHashSet::default();
+        let tl = get_time() + TL as f64 / input.ps.len() as f64 * 0.5;
+        'lp: for (T, s, i) in list {
+            let q = input.ps[i];
+            let dx = q.0 - beam[s].p.0;
+            let dy = q.1 - beam[s].p.1;
             if !cache_vs.contains_key(&(T - beam[s].t, dx - beam[s].v.0 * (T - beam[s].t))) {
                 cache_vs.insert(
                     (T - beam[s].t, dx - beam[s].v.0 * (T - beam[s].t)),
@@ -202,43 +159,74 @@ fn main() {
                     listup(T - beam[s].t, dy - beam[s].v.1 * (T - beam[s].t)),
                 );
             }
-            let vx = &cache_vs[&(T - beam[s].t, dx - beam[s].v.0 * (T - beam[s].t))];
-            let vy = &cache_vs[&(T - beam[s].t, dy - beam[s].v.1 * (T - beam[s].t))];
+            let cvx = &cache_vs[&(T - beam[s].t, dx - beam[s].v.0 * (T - beam[s].t))];
+            let cvy = &cache_vs[&(T - beam[s].t, dy - beam[s].v.1 * (T - beam[s].t))];
+            // 速度を最小・最大・絶対値最小のみに絞る
+            let mut vx = vec![&cvx[0]];
+            if cvx.len() >= 2 {
+                vx.push(&cvx[cvx.len() - 1]);
+                let p = (0..cvx.len())
+                    .min_by_key(|&i| (cvx[i].0 + beam[s].v.0).abs())
+                    .unwrap();
+                if p > 0 && p + 1 < cvx.len() {
+                    vx.push(&cvx[p]);
+                }
+            }
+            let mut vy = vec![&cvy[0]];
+            if cvy.len() >= 2 {
+                vy.push(&cvy[cvy.len() - 1]);
+                let p = (0..cvy.len())
+                    .min_by_key(|&i| (cvy[i].0 + beam[s].v.1).abs())
+                    .unwrap();
+                if p > 0 && p + 1 < cvy.len() {
+                    vy.push(&cvy[p]);
+                }
+            }
             for (vx, ax) in vx.iter() {
                 for (vy, ay) in vy.iter() {
                     let vx = beam[s].v.0 + *vx;
                     let vy = beam[s].v.1 + *vy;
-                    if visited.insert((vx, vy)) {
+                    let mut visited = beam[s].visited.clone();
+                    visited.insert(i);
+                    let h = (visited.clone(), i, vx, vy);
+                    if used.insert(h) {
                         let mut id = beam[s].id;
                         for i in 0..ax.len() {
                             id = trace.add((ay[i] + 1) * 3 + (ax[i] + 1) + 1, id);
                         }
                         next.push(State {
                             t: T,
+                            p: input.ps[i],
                             v: (vx, vy),
+                            visited,
                             id,
                         });
-                        if beam.len() > 1000000 {
-                            break;
+                        if next.len() > 1000000 {
+                            break 'lp;
                         }
                     }
                 }
             }
-            if get_time() - stime > TL * (k + 1) as f64 / input.ps.len() as f64 {
-                break 'list;
+            if get_time() > tl {
+                break;
             }
         }
         if cache_vs.len() > 1000000 {
             cache_vs.clear();
         }
         if !best.is_empty() {
-            let mut p = p;
-            while p != q {
+            loop {
+                if let Some(i) = (0..input.ps.len())
+                    .find(|&i| !best_state.visited[i] && input.ps[i] == best_state.p)
+                {
+                    best_state.visited.insert(i);
+                    break;
+                }
                 let mv = best[best_state.t as usize];
                 best_state.v.0 += (mv - 1) % 3 - 1;
                 best_state.v.1 += (mv - 1) / 3 - 1;
-                p.0 += best_state.v.0;
-                p.1 += best_state.v.1;
+                best_state.p.0 += best_state.v.0;
+                best_state.p.1 += best_state.v.1;
                 best_state.id = trace.add(mv, best_state.id);
                 best_state.t += 1;
             }
@@ -293,6 +281,8 @@ fn main() {
 #[derive(Clone, Debug)]
 struct State {
     t: i64,
+    visited: FixedBitSet,
+    p: (i64, i64),
     v: (i64, i64),
     id: usize,
 }

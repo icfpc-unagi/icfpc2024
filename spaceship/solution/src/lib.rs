@@ -556,6 +556,16 @@ pub fn read_input() -> Input {
     Input { ps }
 }
 
+pub fn input_id() -> i32 {
+    let input = std::env::var("INPUT").unwrap();
+    let input = std::path::Path::new(&input)
+        .file_stem()
+        .unwrap()
+        .to_str()
+        .unwrap();
+    input.parse().unwrap()
+}
+
 pub fn read_output(path: &str) -> Vec<i64> {
     let input = std::env::var("INPUT").unwrap();
     let input = std::path::Path::new(&input)

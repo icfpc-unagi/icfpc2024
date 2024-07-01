@@ -21,7 +21,7 @@ fn main() {
         let stime = std::time::SystemTime::now();
         let status = std::process::Command::new("sh")
             .arg("-c")
-            .arg(format!("ulimit -Sv 16000000; {}", cli.cmd)) // for standard problem
+            .arg(format!("ulimit -Sv 24000000; {}", cli.cmd)) // for standard problem
             // .arg(format!("ulimit -Sv 4000000; timeout --foreground 60s ../tools/target/release/tester {}", cli.cmd)) // for interactive problem
             .stdin(std::process::Stdio::from(input_file))
             .stdout(std::process::Stdio::from(output_file))
