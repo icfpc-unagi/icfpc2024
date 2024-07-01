@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 
 use num::bigint::BigInt;
+use std::io::prelude::*;
 use std::result::Result::Ok;
 use std::{cell::RefCell, rc::Rc};
 
@@ -870,6 +871,44 @@ pub fn eval(s: &str) -> anyhow::Result<Value> {
     }
 }
 
+pub fn input_eval() -> (String, Value) {
+    eprintln!("📍 Enter a program to evaluate (end with ';')");
+    let mut program = String::new();
+    let stdin = std::io::stdin();
+    let mut handle = stdin.lock();
+    let mut buffer = String::new();
+    while handle.read_line(&mut buffer).unwrap() > 0 {
+        program += buffer.trim_end();
+        buffer.clear();
+        program += "\n";
+        if program.trim().ends_with(';') {
+            let term = program.trim().trim_end_matches(';').to_owned();
+            program.clear();
+            match transpile(&(term)) {
+                Ok(transpiled) => {
+                    eprintln!("Transpiled ({}): {}", transpiled.len(), transpiled);
+                }
+                Err(err) => {
+                    eprintln!("Error: {}", err);
+                    continue;
+                }
+            }
+            eprintln!("Evaluating...");
+            match eval(&term) {
+                Ok(result) => {
+                    return (term, result);
+                }
+                Err(err) => {
+                    eprintln!("Error: {}", err);
+                    continue;
+                }
+            }
+        }
+    }
+    eprintln!("End of input");
+    std::process::exit(0);
+}
+
 pub fn int_to_base94(x: &BigInt) -> Vec<u8> {
     if x == &0.into() {
         return vec![33];
@@ -1105,6 +1144,11 @@ fn test_errors() {
     assert_eq!(
         format!("{}", eval_to_node("B+ I0 S").unwrap_err()),
         r#"Token B+ at 1:1: addition of non-int: 15 (I0 at 1:4) + "" (S at 1:7)"#,
+    );
+    // インデントあり
+    assert_eq!(
+        format!("{}", eval_to_node("B+\n  I0\n  S").unwrap_err()),
+        r#"Token B+ at 1:1: addition of non-int: 15 (I0 at 2:3) + "" (S at 3:3)"#,
     );
     // 計算結果の演算ができないパターン
     assert_eq!(
