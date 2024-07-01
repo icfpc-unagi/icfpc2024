@@ -1,4 +1,4 @@
-use icfpc2024::eval::*;
+use icfpc2024::*;
 use std::io::prelude::*;
 
 fn main() {
@@ -10,7 +10,25 @@ fn main() {
         program += line;
         program += "\n";
         if program.trim().ends_with(';') {
-            match eval(program.trim().trim_end_matches(';')) {
+            let term = program.trim().trim_end_matches(';').to_owned();
+            match eval::transpile(&(term)) {
+                Ok(transpiled) => {
+                    eprintln!("Transpiled ({}): {}", transpiled.len(), transpiled);
+                }
+                Err(err) => {
+                    eprintln!("Error: {}", err);
+                    match eval::prettify(&term) {
+                        Ok(pretty) => {
+                            eprintln!("Prettified:\n{}", pretty);
+                        }
+                        Err(err) => {
+                            eprintln!("Failed to prettify: {}", err);
+                        }
+                    }
+                    continue;
+                }
+            }
+            match eval::eval(&term) {
                 Ok(result) => {
                     println!("{}", result);
                 }

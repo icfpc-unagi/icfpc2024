@@ -760,6 +760,79 @@ fn tokenize(input: &str) -> anyhow::Result<Vec<(usize, Vec<u8>)>> {
     Ok(tokens)
 }
 
+fn prettify_tokens(tokens: &[(usize, Vec<u8>)]) -> (String, Option<anyhow::Error>) {
+    fn prettify_token(
+        tokens: &[(usize, Vec<u8>)],
+        p: usize,
+        indent: usize,
+        output: &mut Vec<u8>,
+    ) -> anyhow::Result<usize> {
+        if tokens.len() <= p {
+            anyhow::bail!("Token after {}: unexpected end of input", tokens[p - 1].0);
+        }
+        let token = &tokens[p];
+        // output.extend(b" ".repeat(indent * 2));
+        // output.extend(&token.1);
+        // output.push(b'\n');
+        Ok(1 + match token.1[0] {
+            b'T' | b'F' | b'I' | b'S' | b'v' | b'"' | b'0'..=b'9' => {
+                output.extend(&token.1);
+                0
+            }
+            b'U' | b'L' => {
+                output.extend(&token.1);
+                output.push(b' ');
+                prettify_token(tokens, p + 1, indent, output)?
+            }
+            b'B' => {
+                output.extend(&token.1);
+                output.push(b'\n');
+                output.extend(b" ".repeat((indent + 1) * 2));
+                let p1 = prettify_token(tokens, p + 1, indent + 1, output)?;
+                output.push(b'\n');
+                output.extend(b" ".repeat((indent + 1) * 2));
+                let p2 = prettify_token(tokens, p + 1 + p1, indent + 1, output)?;
+                // output.push(b'\n');
+                p1 + p2
+            }
+            b'?' => {
+                output.extend(&token.1);
+                output.push(b'\n');
+                output.extend(b" ".repeat((indent + 1) * 2));
+                let p1 = prettify_token(tokens, p + 1, indent + 1, output)?;
+                output.push(b'\n');
+                output.extend(b" ".repeat((indent + 1) * 2));
+                let p2 = prettify_token(tokens, p + 1 + p1, indent + 1, output)?;
+                output.push(b'\n');
+                output.extend(b" ".repeat((indent + 1) * 2));
+                let p3 = prettify_token(tokens, p + 1 + p1 + p2, indent + 1, output)?;
+                // output.push(b'\n');
+                p1 + p2 + p3
+            }
+            _ => anyhow::bail!(
+                "Token at {}: unexpected token: {}",
+                token.0,
+                String::from_utf8(token.1.clone()).unwrap()
+            ),
+        })
+    }
+    let mut output = vec![];
+    let result = prettify_token(tokens, 0, 0, &mut output);
+    let output = String::from_utf8(output).unwrap();
+    match result {
+        Ok(_) => (output, None),
+        Err(e) => (output, Some(e)),
+    }
+}
+
+pub fn prettify(s: &str) -> (String, Option<anyhow::Error>) {
+    let tokens = match tokenize(s) {
+        Ok(tokens) => tokens,
+        Err(e) => return (String::new(), Some(e)),
+    };
+    prettify_tokens(&tokens)
+}
+
 fn eval_to_node(s: &str) -> anyhow::Result<NodePos> {
     let tokens = tokenize(s)?;
     let mut p = 0;
