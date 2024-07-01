@@ -111,7 +111,6 @@ fn find_xt(lcg: &LCGConfig, step: i64) -> Option<i64> {
 
         if x < 94 {
             xt = Some(x);
-            break;
         }
 
         len += step;
@@ -279,6 +278,7 @@ fn doit(problem: &Problem, step: i64, m: i64, global_best_score: &Mutex<i64>) ->
         }
 
         let moves = generate_moves(&lcg, step);
+        // eprintln!("{:?}, {}", lcg.xt, moves.len());
         // dbg!(moves.len());
         // TODO: めっちゃ短い周期の乱数でめっちゃ短いのが生成されちゃう
 
