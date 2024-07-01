@@ -1,0 +1,25 @@
+B. "solve lambdaman19 "
+B$ LY
+B$ Lr
+B$ B$
+    B$ vY Lf Ln Lp
+        ? B= vn 0 ""
+        B$ Lg
+        B. B. B.
+            B$ vg "LR"
+            B$ vg "RL"
+            B$ vg "UD"
+            B$ vg "DU"
+        Lq
+            ? B= BT 1 vp BD 1 vq ""
+            B. B.
+                B$ B$ vr BT 1 vq vn
+                B$ B$ vf B/ vn 2 vq 
+                B$ B$ vr BD 1 vq vn
+    64
+    ""
+Ls B$ vY Lf Ln
+    ? B= vn 0
+    ""
+    B. vs B$ vf B- vn 1
+Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
