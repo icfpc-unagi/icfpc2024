@@ -100,11 +100,16 @@ impl std::fmt::Display for NodePos {
 }
 
 pub fn debug_parse(s: &str) -> () {
-    let tokens = tokenize(s);
-    let mut p = 0;
-    let mut binders = vec![];
-    let res = parse(&tokens, &mut p, &mut binders);
-    assert_eq!(p, tokens.len());
+    let res = match tokenize(s) {
+        Ok(tokens) => {
+            let mut p = 0;
+            let mut binders = vec![];
+            let res = parse(&tokens, &mut p, &mut binders);
+            assert_eq!(p, tokens.len());
+            res
+        }
+        Err(e) => Err(e),
+    };
     match res {
         Ok(node) => eprintln!("{}", node),
         Err(e) => eprintln!("Error: {}", e),
@@ -721,18 +726,26 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
     }
 }
 
-fn tokenize(input: &str) -> Vec<(usize, Vec<u8>)> {
+fn tokenize(input: &str) -> anyhow::Result<Vec<(usize, Vec<u8>)>> {
     let mut tokens = Vec::new();
     let mut start = 0;
     let mut in_whitespace = false;
+    let mut in_quote = false;
 
     for (index, ch) in input.char_indices() {
+        if in_quote {
+            if ch == '"' {
+                in_quote = false;
+            }
+            continue;
+        }
         if ch.is_whitespace() != in_whitespace {
             if ch.is_whitespace() {
                 tokens.push((start, input[start..index].bytes().collect()));
             }
             start = index;
             in_whitespace = ch.is_whitespace();
+            in_quote = ch == '"';
         }
     }
 
@@ -740,11 +753,15 @@ fn tokenize(input: &str) -> Vec<(usize, Vec<u8>)> {
         tokens.push((start, input[start..].bytes().collect()));
     }
 
-    tokens
+    if in_quote {
+        anyhow::bail!("Unexpected end of input: unterminated string");
+    }
+
+    Ok(tokens)
 }
 
 fn eval_to_node(s: &str) -> anyhow::Result<NodePos> {
-    let tokens = tokenize(s);
+    let tokens = tokenize(s)?;
     let mut p = 0;
     let mut binders = vec![];
     let root = parse(&tokens, &mut p, &mut binders)?;
@@ -840,7 +857,7 @@ pub fn encode(root: &NodePos) -> Vec<u8> {
 }
 
 pub fn transpile(s: &str) -> anyhow::Result<String> {
-    let tokens = tokenize(s);
+    let tokens = tokenize(s)?;
     let mut p = 0;
     let mut binders = vec![];
     let root = parse(&tokens, &mut p, &mut binders)?;
@@ -1014,7 +1031,19 @@ fn test_errors() {
 fn test_transpile() {
     assert_eq!(transpile("B+ 0 4").unwrap(), "B+ I! I%");
     assert_eq!(
+        transpile("B/ 5206176845685468270 50").unwrap(),
+        r#"B/ I*)('&%$#"! IS"#
+    );
+    assert_eq!(
+        transpile("B* 94 2901062411314618233730627546741369470976").unwrap(),
+        r#"B* I"! I"!!!!!!!!!!!!!!!!!!!!"#
+    );
+    assert_eq!(
         transpile(r#"B. "ULDR" "abcdef""#).unwrap(),
         "B. SOF>L S!\"#$%&"
+    );
+    assert_eq!(
+        transpile(r#"B. "solve lambdaman12 " S"#).unwrap(),
+        r#"B. S3/,6%},!-"$!-!.VW} S"#
     );
 }
