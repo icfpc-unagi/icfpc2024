@@ -4,6 +4,7 @@ extern crate num_bigint;
 extern crate num_traits;
 
 use core::num;
+use itertools::Itertools;
 use itertools::{KMerge, KMergeBy};
 use num::*;
 use num_bigint::BigInt;
@@ -68,14 +69,22 @@ fn solve2(input: &Input, step: i32, xnum: usize, snum: usize, steps: usize) -> i
 
     let best_result = Mutex::new((9999999, 99999999)); // (solve(i), i)
 
-    loop {
-        let sum = xnum + snum * 4 + 1;
-        let mut max = 1;
-        for i in 0..sum {
-            max *= 1 + i;
-        }
+    let mut base_array = vec![];
+    for i in 0..xnum {
+        base_array.push(4);
+    }
+    base_array.push(5);
+    for i in 0..snum {
+        base_array.push(0);
+        base_array.push(1);
+        base_array.push(2);
+        base_array.push(3);
+    }
 
-        let range = 0..(max);
+    let max = count_permutations(&base_array) as i64;
+
+    loop {
+        let range = 0..max;
         range.into_par_iter().for_each(|i| {
             if best_result.lock().unwrap().0 == 0 {
                 return;
@@ -115,7 +124,7 @@ fn solve2(input: &Input, step: i32, xnum: usize, snum: usize, steps: usize) -> i
 }
 
 fn solve3(
-    bit: usize,
+    bit: i64,
     start_id: usize,
     d: usize,
     xnum: usize,
@@ -129,71 +138,37 @@ fn solve3(
     let mut now = start_id;
     let mut remain_pos = d - 1;
 
-    let perm_length = xnum + snum * 4 + 1;
-    let mut perm = vec![0; perm_length];
-
-    let mut remain_bit = bit;
-    for i in 0..perm_length {
-        perm[i] = remain_bit % (i + 1);
-        remain_bit /= i + 1;
+    let mut base_array = vec![];
+    for i in 0..xnum {
+        base_array.push(4);
+    }
+    base_array.push(5);
+    for i in 0..snum {
+        base_array.push(0);
+        base_array.push(1);
+        base_array.push(2);
+        base_array.push(3);
     }
 
-    for k in 0..perm.len() {
-        for i in 0..k {
-            if perm[i] >= perm[k] {
-                perm[i] += 1;
-            }
-        }
-    }
+    get_permutation(&base_array, bit as usize);
 
-    let mut error = false;
-    let mut xmin = 0;
+    //dbg!(base_array.clone());
 
-    let mut amin = vec![];
-    for i in 0..4 {
-        amin.push(i + xnum + 1);
-    }
-
-    let mut base_array = vec![0; perm_length];
     let mut array_start = !0;
-
-    for i in 0..perm_length {
-        if perm[i] < xnum {
-            if xmin < perm[i] || array_start == !0 {
-                error = true;
-                break;
-            }
-            xmin += 1;
-
-            base_array[i] = 4;
-        } else if xnum == perm[i] {
-            array_start = i;
-            base_array[i] = 5;
-        } else {
-            let rem = perm[i] - (xnum + 1);
-            let r = rem % 4;
-            if amin[r] != perm[i] {
-                error = true;
-                break;
-            }
-            amin[r] += 4;
-
-            base_array[i] = r;
-        }
-    }
-
-    if error {
-        return (remain_pos, 0);
-    }
-
-    let limit_turn = 999998 / step;
 
     let mut now_array = vec![];
     let mut now_size = 0;
 
-    for i in 0..array_start {
-        for k in 0..step {
-            now_array.push(base_array[i]);
+    for i in 0..base_array.len() {
+        if base_array[i] == 5 {
+            array_start = i;
+            break;
+        } else if base_array[i] < 4 {
+            return (remain_pos, 0);
+        } else {
+            for k in 0..step {
+                now_array.push(base_array[i]);
+            }
         }
     }
     now_size = now_array.len();
@@ -253,6 +228,18 @@ fn solve3(
         }
     }
     return (remain_pos, 0);
+}
+
+fn count_permutations<T: Clone>(arr: &[T]) -> usize {
+    arr.iter().permutations(arr.len()).count()
+}
+
+// 指定したインデックスのユニークなpermutationを返す関数
+fn get_permutation<T: Clone>(arr: &[T], index: usize) -> Option<Vec<T>> {
+    arr.iter()
+        .permutations(arr.len())
+        .nth(index)
+        .map(|perm| perm.into_iter().cloned().collect())
 }
 
 fn main() {
