@@ -1,2 +1,75 @@
 solve 3d2
+. 2 . 1 . 2 . A . . 2 . 1
+A * . + . % . * . A = . +
+. . . . . . . S . . . . S
 
+
+solve 3d2
+
+
+
+2400 = 3 * 8 * 5 * 20
+1920 = 3 * 8 * 80
+
+
+A % (A + 1) % (A - 1)
+
+A % (A + 1) = 
+ A if A >= 0
+ -1 if A <= -2
+ NaN if A == -1
+
+A % (A - 1) = 
+ 1 if A >= 2
+ A if A <= 0
+ Nan if A == 1
+
+
+solve 3d2
+. . . 1 . . . . . 
+. . A - . . . . . 
+. . . . . . . . . 
+A % A % . . . . . 
+. . . . . . . . . 
+. . . * . . . . . 
+. . . . . . . . . 
+. . . . . . . . . 
+
+
+
+solve 3d3
+. 2 . 1 . 2 . A
+A * . + . % 0 =
+. . . . . S . S
+
+solve 3d3
+. 1 . A .
+A + . % .
+. . . . .
+A % . * .
+. . . S .
+
+入力に 3が3つ
+
+17.out:Correct, you solved 3d2 with a score of 1764!
+2.out:Correct, you solved 3d2 with a score of 1764!
+29.out:Correct, you solved 3d2 with a score of 1764!
+52.out:Correct, you solved 3d2 with a score of 1764!
+62.out:Correct, you solved 3d2 with a score of 1764!
+69.out:Correct, you solved 3d2 with a score of 1764!
+71.out:Correct, you solved 3d2 with a score of 1764!
+78.out:Correct, you solved 3d2 with a score of 1764!
+8.out:Correct, you solved 3d2 with a score of 1764!
+88.out:Correct, you solved 3d2 with a score of 1764!
+
+
+solve 3d2
+. A . .
+0 - . A
+. A 8 =
+2 = S S
+^ 1 . A
+0 + 3 =
+. . . S
+1 @ 2 .
+. 1 . .
