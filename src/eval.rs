@@ -100,11 +100,16 @@ impl std::fmt::Display for NodePos {
 }
 
 pub fn debug_parse(s: &str) -> () {
-    let tokens = tokenize(s);
-    let mut p = 0;
-    let mut binders = vec![];
-    let res = parse(&tokens, &mut p, &mut binders);
-    assert_eq!(p, tokens.len());
+    let res = match tokenize(s) {
+        Ok(tokens) => {
+            let mut p = 0;
+            let mut binders = vec![];
+            let res = parse(&tokens, &mut p, &mut binders);
+            assert_eq!(p, tokens.len());
+            res
+        }
+        Err(e) => Err(e),
+    };
     match res {
         Ok(node) => eprintln!("{}", node),
         Err(e) => eprintln!("Error: {}", e),
@@ -150,7 +155,20 @@ pub fn parse(
             }
             Ok(NodePos(Node::Const(Value::Int(val)), pos))
         }
+        // デバッグ用の記法
+        b'0'..=b'9' => {
+            let mut val = BigInt::from(id - b'0');
+            for &b in body {
+                val = val * 10 + (b - b'0');
+            }
+            Ok(NodePos(Node::Const(Value::Int(val)), pos))
+        }
         b'S' => Ok(NodePos(Node::Const(S(body)), pos)),
+        // デバッグ用の記法
+        b'"' => Ok(NodePos(
+            Node::Const(Value::Str(body[..body.len() - 1].to_vec())),
+            pos,
+        )),
         b'U' => match body.len() {
             1 => Ok(NodePos(
                 Node::Unary {
@@ -589,7 +607,10 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
                         NodePos(Node::Const(Value::Str(b)), _),
                     ) => {
                         let a: usize = a.try_into().unwrap();
-                        Ok(NodePos(Node::Const(Value::Str(b[..a.min(b.len())].to_vec())), pos))
+                        Ok(NodePos(
+                            Node::Const(Value::Str(b[..a.min(b.len())].to_vec())),
+                            pos,
+                        ))
                     }
                     (a, b) => anyhow::bail!(
                         "Token {}: take of non-int or non-str: {:#} T {:#}",
@@ -608,7 +629,10 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
                         NodePos(Node::Const(Value::Str(b)), _),
                     ) => {
                         let a: usize = a.try_into().unwrap();
-                        Ok(NodePos(Node::Const(Value::Str(b[a.min(b.len())..].to_vec())), pos))
+                        Ok(NodePos(
+                            Node::Const(Value::Str(b[a.min(b.len())..].to_vec())),
+                            pos,
+                        ))
                     }
                     (a, b) => anyhow::bail!(
                         "Token {}: drop of non-int or non-str: {:#} D {:#}",
@@ -702,18 +726,26 @@ fn rec(root: &NodePos, count: &mut usize) -> anyhow::Result<NodePos> {
     }
 }
 
-fn tokenize(input: &str) -> Vec<(usize, Vec<u8>)> {
+fn tokenize(input: &str) -> anyhow::Result<Vec<(usize, Vec<u8>)>> {
     let mut tokens = Vec::new();
     let mut start = 0;
     let mut in_whitespace = false;
+    let mut in_quote = false;
 
     for (index, ch) in input.char_indices() {
+        if in_quote {
+            if ch == '"' {
+                in_quote = false;
+            }
+            continue;
+        }
         if ch.is_whitespace() != in_whitespace {
             if ch.is_whitespace() {
                 tokens.push((start, input[start..index].bytes().collect()));
             }
             start = index;
             in_whitespace = ch.is_whitespace();
+            in_quote = ch == '"';
         }
     }
 
@@ -721,15 +753,25 @@ fn tokenize(input: &str) -> Vec<(usize, Vec<u8>)> {
         tokens.push((start, input[start..].bytes().collect()));
     }
 
-    tokens
+    if in_quote {
+        anyhow::bail!("Unexpected end of input: unterminated string");
+    }
+
+    Ok(tokens)
 }
 
 fn eval_to_node(s: &str) -> anyhow::Result<NodePos> {
-    let tokens = tokenize(s);
+    let tokens = tokenize(s)?;
     let mut p = 0;
     let mut binders = vec![];
     let root = parse(&tokens, &mut p, &mut binders)?;
-    assert_eq!(p, tokens.len());
+    if p != tokens.len() {
+        anyhow::bail!(
+            "Token after {}: unexpected end of input after {}",
+            tokens[p].0,
+            String::from_utf8(tokens[p].1.clone()).unwrap()
+        );
+    }
     assert_eq!(binders.len(), 0);
     rec(&root, &mut 0)
 }
@@ -739,6 +781,96 @@ pub fn eval(s: &str) -> anyhow::Result<Value> {
         NodePos(Node::Const(val), pos) => Ok(val),
         v => anyhow::bail!("Non-const result: {}", v),
     }
+}
+
+pub fn int_to_base94(x: &BigInt) -> Vec<u8> {
+    if x == &0.into() {
+        return vec![33];
+    }
+    let mut x = x.clone();
+    let mut s = vec![];
+    while &x > &0.into() {
+        let v: u8 = (&x % BigInt::from(94)).try_into().unwrap();
+        s.push(v + 33);
+        x /= 94;
+    }
+    s.reverse();
+    s
+}
+
+pub fn encode(root: &NodePos) -> Vec<u8> {
+    match &root.0 {
+        Node::Const(val) => match val {
+            Value::Bool(b) => match b {
+                true => vec![b'T'],
+                false => vec![b'F'],
+            },
+            Value::Int(i) => {
+                let mut s = vec![b'I'];
+                s.extend(int_to_base94(&i));
+                s
+            }
+            Value::Str(v) => {
+                let mut s = vec![b'S'];
+                s.extend(
+                    v.iter()
+                        .map(|&b| CHARS.iter().position(|&c| c == b).unwrap() as u8 + b'!'),
+                );
+                s
+            }
+        },
+        Node::Var(name, _) => {
+            let mut s = vec![b'v'];
+            s.extend(int_to_base94(name));
+            s
+        }
+        Node::Unary { op, v } => {
+            let mut s = vec![b'U', *op, b' '];
+            s.extend(encode(v).into_iter());
+            s
+        }
+        Node::Binary { op, v1, v2 } => {
+            let mut s = vec![b'B', *op, b' '];
+            s.extend(encode(v1).into_iter());
+            s.push(b' ');
+            s.extend(encode(v2).into_iter());
+            s
+        }
+        Node::If { cond, v1, v2 } => {
+            let mut s = vec![b'?', b' '];
+            s.extend(encode(cond).into_iter());
+            s.push(b' ');
+            s.extend(encode(v1).into_iter());
+            s.push(b' ');
+            s.extend(encode(v2).into_iter());
+            s
+        }
+        Node::Lambda { var, exp } => {
+            let mut s = vec![b'L'];
+            s.extend(int_to_base94(var));
+            s.push(b' ');
+            s.extend(encode(exp).into_iter());
+            s
+        }
+        Node::Thunk(_) => todo!(),
+    }
+}
+
+pub fn transpile(s: &str) -> anyhow::Result<String> {
+    let tokens = tokenize(s)?;
+    let mut p = 0;
+    let mut binders = vec![];
+    let root = parse(&tokens, &mut p, &mut binders)?;
+    if p != tokens.len() {
+        anyhow::bail!(
+            "Token after {}: unexpected end of input after {}",
+            tokens[p].0,
+            String::from_utf8(tokens[p].1.clone()).unwrap()
+        );
+    }
+    assert_eq!(binders.len(), 0);
+    let transpiled = encode(&root);
+    Ok(String::from_utf8(transpiled).unwrap())
 }
 
 #[test]
@@ -892,5 +1024,26 @@ fn test_errors() {
     assert_eq!(
         format!("{}", eval_to_node("B+ I0 B. S0 S1").unwrap_err()),
         r#"Token 0: addition of non-int: 15:3 + "pq":6"#,
+    );
+}
+
+#[test]
+fn test_transpile() {
+    assert_eq!(transpile("B+ 0 4").unwrap(), "B+ I! I%");
+    assert_eq!(
+        transpile("B/ 5206176845685468270 50").unwrap(),
+        r#"B/ I*)('&%$#"! IS"#
+    );
+    assert_eq!(
+        transpile("B* 94 2901062411314618233730627546741369470976").unwrap(),
+        r#"B* I"! I"!!!!!!!!!!!!!!!!!!!!"#
+    );
+    assert_eq!(
+        transpile(r#"B. "ULDR" "abcdef""#).unwrap(),
+        "B. SOF>L S!\"#$%&"
+    );
+    assert_eq!(
+        transpile(r#"B. "solve lambdaman12 " S"#).unwrap(),
+        r#"B. S3/,6%},!-"$!-!.VW} S"#
     );
 }
