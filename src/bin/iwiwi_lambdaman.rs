@@ -1,4 +1,5 @@
-use std::io::{self, Read};
+use rand::Rng;
+use std::io::{self, Read}; // Rngトレイトをインポート
 
 struct Problem {
     grid: Vec<Vec<bool>>,
@@ -184,6 +185,8 @@ fn randstr(n: usize) -> String {
 }
 
 fn main() {
+    let mut rng = rand::thread_rng(); // スレッドに対する乱数生成器を作成
+
     let mut input = String::new();
     io::stdin().read_to_string(&mut input).unwrap();
     let problem = parse_maze(&input);
@@ -192,24 +195,39 @@ fn main() {
     let mut n = 0;
     let mut s = 0;
     let mut ma = 0;
+
+    let mut best_move = vec![];
+    let mut best_visited = 0;
+    for k in 0..8 {
+        best_move.push(randstr(6));
+    }
+
     loop {
-        let move1 = randstr(7);
-        let move2 = randstr(7);
-        let move3 = randstr(7);
-        let move4 = randstr(20);
-        let moves = gen(&move1, &move2, &move3);
-        //let moves = gen2(&move1, &move2, &move3, &move4);
-        // dbg!(&moves.len());
+        let mut moves = best_move.clone();
+        let k = rand::thread_rng().gen_range(0..moves.len());
+        moves[k] = randstr(6);
+        let k = rand::thread_rng().gen_range(0..moves.len());
+        moves[k] = randstr(6);
 
-        //eprintln!("Moves: '{}...' (length={})", &moves[..10], moves.len());
+        let mut move_str = String::new();
+        for m in &moves {
+            move_str += &m.repeat(64);
+        }
+        move_str = move_str.repeat(64);
 
-        let visited = simulate(&problem, &moves);
+        let visited = simulate(&problem, &move_str);
         let n_visited_cells = get_visited_cells(&visited);
         // eprintln!("{} / {}", n_visited_cells, n_reachable_cells);
         if n_visited_cells == n_reachable_cells {
-            println!("{}\n{}\n{}\n{}", move1, move2, move3, move4);
+            println!("{:?}", moves);
             break;
         }
+
+        if n_visited_cells > best_visited {
+            best_visited = n_visited_cells;
+            best_move = moves;
+        }
+
         // print_visited_cells(&problem, &visited);
 
         n += 1;
