@@ -159,22 +159,52 @@ fn gen_step1(problem_id: i64, lcg: &LCGConfig) -> String {
 
     format!(
         r##"
-B$ B$
-    Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
-    Lf Lx
-    ?
-        B= vx {xt}
-        "solve lambdaman{problem_id} "
-        B.
             B$
-                vf
-                B%
-                    B*
-                        vx
-                        {a}
-                    {m}
-            BT 1 BD B% vx 4 "RDLU"
-    {x0}
+                B$
+                    Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
+                    Lf Lx
+                    ?
+                        B= vx {xt}
+                        "solve lambdaman{problem_id} "
+                        B.
+                            B$
+                                vf
+                                B%
+                                    B*
+                                        vx
+                                        {a}
+                                    {m}
+                            BT 1 BD B% vx 4 "RDLU"
+                {x0}
+    "##
+    )
+}
+
+fn gen_step2(problem_id: i64, lcg: &LCGConfig) -> String {
+    assert_eq!(lcg.c, 0);
+    let a = lcg.a;
+    let dm = lcg.m * 2;
+    let dx0 = lcg.x0 * 2;
+    let dxt = lcg.xt.unwrap() * 2;
+
+    format!(
+        r##"
+            B$
+                B$
+                    Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
+                    Lf Lx
+                    ?
+                        B= vx {dxt}
+                        "solve lambdaman{problem_id} "
+                        B.
+                            B$ vf
+                                B%
+                                    B*
+                                        vx
+                                        {a}
+                                    {dm}
+                            BT 2 BD B% vx 8 "RRDDLLUU"
+                {dx0}
     "##
     )
 }
@@ -183,7 +213,7 @@ fn gen(problem_id: i64, lcg: &LCGConfig, step: i64) -> String {
     if step == 1 {
         gen_step1(problem_id, lcg)
     } else {
-        panic!();
+        gen_step2(problem_id, lcg)
     }
 }
 
@@ -312,7 +342,6 @@ fn doit(problem: &Problem, step: i64, m: i64, global_best_score: &Mutex<i64>) ->
 fn main() {
     let args = Args::parse();
     let problem = load_problem(args.problem);
-    let step = args.step;
 
     let mut min_m: i64 = args.min_m;
     let global_best_score = Mutex::new(9999999);
