@@ -11,20 +11,15 @@ fn main() {
         program += "\n";
         if program.trim().ends_with(';') {
             let term = program.trim().trim_end_matches(';').to_owned();
+            program.clear();
             match eval::transpile(&(term)) {
                 Ok(transpiled) => {
                     eprintln!("Transpiled ({}): {}", transpiled.len(), transpiled);
                 }
                 Err(err) => {
                     eprintln!("Error: {}", err);
-                    match eval::prettify(&term) {
-                        Ok(pretty) => {
-                            eprintln!("Prettified:\n{}", pretty);
-                        }
-                        Err(err) => {
-                            eprintln!("Failed to prettify: {}", err);
-                        }
-                    }
+                    let result = eval::prettify(&term);
+                    eprintln!("Prettified:\n{}", result.0.trim());
                     continue;
                 }
             }
@@ -36,7 +31,6 @@ fn main() {
                     eprintln!("Error: {}", err);
                 }
             }
-            program.clear();
         }
     }
 }
