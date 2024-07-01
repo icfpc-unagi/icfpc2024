@@ -44,7 +44,7 @@ pub fn preprocess(s: &str) -> anyhow::Result<String> {
             assert!(token.ends_with('"') && token.len() >= 2);
             pp_tokens.push(format!("S{}", &encode_str(&token[1..token.len() - 1])));
         } else if token == "Y" {
-            const Y: &str = "Lf B$ Lx B$ vf B$ vx vx Lx B$ vf B$ vx vx";
+            const Y: &str = "Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx";
             pp_tokens.extend(Y.split_whitespace().map(|t| t.to_string()));
         } else {
             pp_tokens.push(token);

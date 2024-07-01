@@ -2,6 +2,7 @@
 
 extern crate num_bigint;
 extern crate num_traits;
+use clap::Parser;
 
 use core::num;
 use itertools::{KMerge, KMergeBy};
@@ -32,55 +33,137 @@ type Board = Vec<Vec<char>>;
 const DIJ: [(usize, usize); 4] = [(0, 1), (1, 0), (0, !0), (!0, 0)];
 const DIR: [char; 4] = ['R', 'D', 'L', 'U'];
 
-fn gen1(problem_id: i64, x0: i64, a: i64, c: i64, m: i64, xt: i64) -> String {
-    if c != 0 {
-        return format!(
-            r##"
-    B.
-        "solve lambdaman{problem_id} "
-        B$
+fn gen(problem_id: i64, x0: i64, a: i64, c: i64, m: i64, xt: i64, step: i32) -> String {
+    if step == 1 {
+        if c != 0 {
+            return format!(
+                r##"
+        B.
+            "solve lambdaman{problem_id} "
             B$
-                Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
-                Lf Lx
-                ?
-                    B= vx {xt}
-                    ""
-                    B.
-                        BT 1 BD B% vx 4 "RDLU"
-                        B$ vf
-                            B%
-                                B+
+                B$
+                    Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
+                    Lf Lx
+                    ?
+                        B= vx {xt}
+                        ""
+                        B.
+                            BT 1 BD B% vx 4 "RDLU"
+                            B$ vf
+                                B%
+                                    B+
+                                        B*
+                                            vx
+                                            {a}
+                                        {c}
+                                    {m}
+            {x0}
+        "##
+            );
+        } else {
+            return format!(
+                r##"
+        B.
+            "solve lambdaman{problem_id} "
+            B$
+                B$
+                    Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
+                    Lf Lx
+                    ?
+                        B= vx {xt}
+                        ""
+                        B.
+                            BT 1 BD B% vx 4 "RDLU"
+                            B$ vf
+                                B%
                                     B*
                                         vx
                                         {a}
-                                    {c}
-                                {m}
-        {x0}
-    "##
-        );
-    } else {
-        return format!(
-            r##"
-    B.
-        "solve lambdaman{problem_id} "
-        B$
+                                    {m}
+            {x0}
+        "##
+            );
+        }
+    } else if step == 2 {
+        if c != 0 {
+            return format!(
+                r##"
+        B.
+            "solve lambdaman{problem_id} "
             B$
-                Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
-                Lf Lx
-                ?
-                    B= vx {xt}
-                    ""
-                    B.
-                        BT 1 BD B% vx 4 "RDLU"
-                        B$ vf
-                            B%
-                                B*
-                                    vx
-                                    {a}
-                                {m}
-        {x0}
-    "##
-        );
+                B$
+                    Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
+                    Lf Lx
+                    ?
+                        B= vx {xt}
+                        ""
+                        B.
+                            BT 2 BD B% B* vx 2 8 "RRDDLLUU"
+                            B$ vf
+                                B%
+                                    B+
+                                        B*
+                                            vx
+                                            {a}
+                                        {c}
+                                    {m}
+            {x0}
+        "##
+            );
+        } else {
+            let dm = m * 2;
+            let dx0 = x0 * 2;
+            let dxt = xt * 2;
+
+            return format!(
+                r##"
+            B.
+                "solve lambdaman{problem_id} "
+                B$
+                    B$
+                        Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
+                        Lf Lx
+                        ?
+                            B= vx {dxt}
+                            ""
+                            B.
+                                BT 2 BD B% vx 8 "RRDDLLUU"
+                                B$ vf
+                                    B%
+                                        B*
+                                            vx
+                                            {a}
+                                        {dm}
+                {dx0}
+            "##
+            );
+            /*
+                return format!(
+                    r##"
+            B.
+                "solve lambdaman{problem_id} "
+                B$
+                    B$
+                        Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
+                        Lf Lx
+                        ?
+                            B= vx {xt}
+                            ""
+                            B.
+                                BT 2 BD B% B* vx 2 8 "RRDDLLUU"
+                                B$ vf
+                                    B%
+                                        B*
+                                            vx
+                                            {a}
+                                        {m}
+                {x0}
+            "##
+                );
+                */
+        }
+    } else {
+        panic!()
     }
 }
 
@@ -136,19 +219,26 @@ fn solve2(problem_id: usize, input: &Input, step: i32, first_mod: usize, use_c: 
 
         //let range = 0..(93 * 93 * 93);
 
-        let mut range: Vec<u64>;
-        if use_c {
-            range = (0..(93 * 93 * 93)).collect();
+        let max_a = if step == 1 {
+            93
+        } else if step == 2 {
+            93 / 2
         } else {
-            range = vec![];
-            for a in 0..93 {
-                for b in 0..93 {
-                    range.push((a * 93 + b) * 93);
+            panic!()
+        };
+        let max_b = 93;
+        let max_c = if use_c { max_a } else { 1 };
+
+        let mut range: Vec<u64> = vec![];
+        for a in 0..max_a {
+            for b in 0..max_b {
+                for c in 0..max_c {
+                    range.push((a * 93 * 93 + b * 93 + c) as u64);
                 }
             }
         }
         range.shuffle(&mut rng);
-        // let range: Vec<_> = range.iter().take(1000).collect();
+        let range: Vec<_> = range.into_iter().take(10000).collect();
 
         range.into_par_iter().for_each(|i| {
             if best_result.lock().unwrap().0 == 0 {
@@ -171,13 +261,14 @@ fn solve2(problem_id: usize, input: &Input, step: i32, first_mod: usize, use_c: 
                     if last[i] == !0 {
                         continue;
                     }
-                    let program = gen1(
+                    let program = gen(
                         problem_id as i64,
                         a as i64,
                         b as i64,
                         c as i64,
                         modulo as i64,
                         last[i] as i64,
+                        step,
                     );
                     eprintln!("--------------------------------------------------------------------------------");
                     println!("a : {}", a);
@@ -203,15 +294,15 @@ fn solve2(problem_id: usize, input: &Input, step: i32, first_mod: usize, use_c: 
                 return;
             }
 
-            challenge.add(1);
-
             // 最小値を更新
             let mut best = best_result.lock().unwrap();
             if remain_pos < best.0 {
                 *best = (remain_pos, a, b, c);
-
                 println!("  NowBest: {} at i: {} {}", best.0, best.1, challenge);
             }
+
+            challenge.add(1);
+
         });
 
         if best_result.lock().unwrap().0 == 0 {
@@ -335,11 +426,14 @@ fn solve3(
         }
         r %= 4;
         */
-        let r = a % (4 * step);
+
+        //let r = a % (4 * step);
+        let r = a % 4;
         a = (a * b + c) % modulo;
 
         for k in 0..step {
-            now = next[now][(r + k) / step % 4 as usize];
+            //now = next[now][(r + k) / step % 4 as usize];
+            now = next[now][r as usize];
 
             if !visited[now] {
                 remain_pos -= 1;
@@ -363,9 +457,25 @@ fn solve3(
     return (remain_pos, 0);
 }
 
-fn main() {
-    let args: Vec<String> = env::args().collect();
+/// A simple program to send file contents as requests
+#[derive(Parser, Debug)]
+struct Args {
+    #[arg(long)]
+    problem: usize,
 
+    #[arg(long)]
+    step: usize,
+
+    #[arg(long)]
+    modulo: usize,
+
+    #[arg(long)]
+    disable_c: bool,
+}
+
+fn main() {
+    /*
+    let args: Vec<String> = env::args().collect();
     let id: usize = args[1].parse().expect("ID should be an integer");
     let step: usize = args[2].parse().expect("Step should be an integer");
     let modulo: usize = if args.len() > 3 {
@@ -373,8 +483,12 @@ fn main() {
     } else {
         1000003
     };
+    */
+    let args = Args::parse();
+    dbg!(&args);
 
-    solve(id, step, modulo, true);
+    let use_c = !args.disable_c;
+    solve(args.problem, args.step, args.modulo, use_c);
 }
 
 fn solve(i: usize, step: usize, first_mod: usize, use_c: bool) {
@@ -455,16 +569,16 @@ fn getLastA(
     let mut a2 = a;
     for i in 0..max_turn {
         if !visited[a2] && i >= end_turn {
-            if a2 < 94 {
+            if a2 < 94 / step {
                 ans[0] = a2;
             }
-            if a2 < 94 * 94 {
+            if a2 < 94 * 94 / step {
                 ans[1] = a2;
             }
-            if a2 < 94 * 94 * 94 {
+            if a2 < 94 * 94 * 94 / step {
                 ans[2] = a2;
             }
-            if a2 < 94 * 94 * 94 * 94 {
+            if a2 < 94 * 94 * 94 * 94 / step {
                 ans[3] = a2;
             }
         }
