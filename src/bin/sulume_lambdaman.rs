@@ -6,7 +6,7 @@ use num::{BigUint, Zero};
 
 #[derive(Parser, Clone, Debug)]
 struct Args {
-    #[clap(short, long, default_value = "2000")]
+    #[clap(short, long, default_value = "1000")]
     length: usize,
     #[clap(short, long, default_value = "1002887")]
     base: u64,
@@ -35,31 +35,32 @@ B.
         B$
             Lf B$ Lx B$ vx vx Lx B$ vf B$ vx vx
             Lf Lx
-            ?
-                B=
-                    B%
-                          U# vx
-                          {base}
-                    {last}
-                ""
-                B$
-                    Ls
-                        B.
-                            vs
-                            B$
-                                vf
+            B$
+                Lr
+                    ?
+                        B=
+                            vr
+                            {last}
+                        ""
+                        B$
+                            Ls
+                                B.
                                     vs
-                    B.
-                        vx
-                        BT
-                            1
-                            BD 
-                                B%
-                                    B%
-                                        U# vx
-                                        {base}
-                                    4
+                                    B$
+                                        vf
+                                            vs
+                            B.
                                 vx
+                                BT
+                                    1
+                                    BD 
+                                        B%
+                                            vr
+                                            4
+                                        vx
+                B%
+                    U# vx
+                    {base}
         "{init}"
 "#,
         problem_id = args.problem_id,
