@@ -196,18 +196,20 @@ fn main() {
     let mut s = 0;
     let mut ma = 0;
 
+    let len = 8;
+
     let mut best_move = vec![];
     let mut best_visited = 0;
-    for k in 0..8 {
-        best_move.push(randstr(6));
+    for k in 0..2 {
+        best_move.push(randstr(len));
     }
 
     loop {
         let mut moves = best_move.clone();
         let k = rand::thread_rng().gen_range(0..moves.len());
-        moves[k] = randstr(6);
+        moves[k] = randstr(len);
         let k = rand::thread_rng().gen_range(0..moves.len());
-        moves[k] = randstr(6);
+        moves[k] = randstr(len);
 
         let mut move_str = String::new();
         for m in &moves {
