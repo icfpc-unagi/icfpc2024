@@ -9,7 +9,7 @@ use num::*;
 use num_bigint::BigInt;
 use num_traits::{PrimInt, ToPrimitive};
 use rand::prelude::*;
-use rayon::{prelude::*, string};
+use rayon::{array, prelude::*, string};
 use resvg::usvg::filter::Turbulence;
 use std::char::MAX;
 use std::env;
@@ -69,7 +69,7 @@ fn solve2(input: &Input, step: i32, xnum: usize, snum: usize, steps: usize) -> i
     let best_result = Mutex::new((9999999, 99999999)); // (solve(i), i)
 
     loop {
-        let sum = xnum + snum * 4;
+        let sum = xnum + snum * 4 + 1;
         let mut max = 1;
         for i in 0..sum {
             max *= 1 + i;
@@ -129,7 +129,7 @@ fn solve3(
     let mut now = start_id;
     let mut remain_pos = d - 1;
 
-    let perm_length = xnum + snum * 4;
+    let perm_length = xnum + snum * 4 + 1;
     let mut perm = vec![0; perm_length];
 
     let mut remain_bit = bit;
@@ -146,25 +146,31 @@ fn solve3(
         }
     }
 
-    let mut base_array = vec![0; perm_length];
     let mut error = false;
     let mut xmin = 0;
 
     let mut amin = vec![];
     for i in 0..4 {
-        amin.push(i + xnum);
+        amin.push(i + xnum + 1);
     }
+
+    let mut base_array = vec![0; perm_length];
+    let mut array_start = !0;
 
     for i in 0..perm_length {
         if perm[i] < xnum {
-            if xmin < perm[i] {
+            if xmin < perm[i] || array_start == !0 {
                 error = true;
                 break;
             }
             xmin += 1;
+
             base_array[i] = 4;
+        } else if xnum == perm[i] {
+            array_start = i;
+            base_array[i] = 5;
         } else {
-            let rem = perm[i] - xnum;
+            let rem = perm[i] - (xnum + 1);
             let r = rem % 4;
             if amin[r] != perm[i] {
                 error = true;
@@ -179,24 +185,32 @@ fn solve3(
     if error {
         return (remain_pos, 0);
     }
-    //dbg!(&base_array);
 
     let limit_turn = 999998 / step;
 
-    let c = bit % 93 + 1;
-    let b = bit / 93 % 93 + 1;
-    let mut a = bit / 93 / 93 % 93 + 1;
-    if a <= 1 {
-        return (remain_pos, 0);
-    }
-
     let mut now_array = vec![];
     let mut now_size = 0;
-    while now_size * xnum + now_size * snum * 4 < 1000000 {
-        let next_size = now_size * xnum + snum * 4 * step;
+
+    for i in 0..array_start {
+        for k in 0..step {
+            now_array.push(base_array[i]);
+        }
+    }
+    now_size = now_array.len();
+
+    let mut afterxnum = xnum;
+    let mut aftersnum = 0;
+    for i in array_start..base_array.len() {
+        if base_array[i] < 4 {
+            aftersnum += 1;
+        }
+    }
+
+    while now_size * xnum + step * aftersnum < 1000000 {
+        let next_size = now_size * xnum + step * aftersnum;
         let mut next_array = vec![0; next_size];
         let mut cnt = 0;
-        for i in 0..base_array.len() {
+        for i in array_start + 1..base_array.len() {
             if base_array[i] < 4 {
                 for k in 0..step {
                     next_array[cnt] = base_array[i];
@@ -210,8 +224,8 @@ fn solve3(
             }
         }
 
-        now_size = next_size;
         now_array = next_array;
+        now_size = now_array.len();
     }
 
     for turn in 0..now_size {
@@ -221,12 +235,15 @@ fn solve3(
             remain_pos -= 1;
             visited[now] = true;
             if remain_pos == 0 {
+                println!("OK {} {}", remain_pos, turn);
                 let mut s = String::new();
                 for i in 0..base_array.len() {
                     if base_array[i] < 4 {
                         s.push(DIR[base_array[i]]);
+                    } else if base_array[i] == 4 {
+                        s.push('X');
                     } else {
-                        s.push('x');
+                        s.push(',');
                     }
                 }
                 println!("{} {}", s, turn);
